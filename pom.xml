@@ -18,6 +18,7 @@
 
     <modules>
         <module>homework_1</module>
+	    <module>session_03</module>
     </modules>
 
 </project>
