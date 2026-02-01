@@ -25,7 +25,8 @@ public class PolarCoord {
     public PolarCoord(double angle, double r, boolean isDegree){
         if(isDegree) this.angleInRad = Math.toRadians(angle);
         else this.angleInRad = angle;
-        
+
+        this.radius = r;
         this.id = PolarCoord.count;
         PolarCoord.count++;
     }
