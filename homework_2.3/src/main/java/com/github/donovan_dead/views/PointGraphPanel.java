@@ -7,11 +7,16 @@ import java.awt.*;
 
 public class PointGraphPanel extends JPanel {
     private CartesianCoord point;
+    private boolean drawComponents = false;
 
     public PointGraphPanel() {
         setPreferredSize(new Dimension(200, 200));
         setBackground(Color.WHITE);
         setBorder(BorderFactory.createLineBorder(Color.BLACK));
+    }
+
+    public void setDrawComponents(boolean drawComponents) {
+        this.drawComponents = drawComponents;
     }
 
     public void drawPoint(CartesianCoord point) {
@@ -42,9 +47,21 @@ public class PointGraphPanel extends JPanel {
             int x = (int) (centerX + point.getX() * scale);
             int y = (int) (centerY - point.getY() * scale);
 
-            // Draw line from origin to point
-            g.setColor(Color.RED);
-            g.drawLine(centerX, centerY, x, y);
+            if (drawComponents) {
+                // Draw component lines
+                Graphics2D g2d = (Graphics2D) g.create();
+                Stroke dashed = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, new float[]{9}, 0);
+                g2d.setStroke(dashed);
+                g2d.setColor(Color.GREEN);
+                g2d.drawLine(x, y, x, centerY); // Line to X-axis
+                g2d.setColor(Color.ORANGE);
+                g2d.drawLine(x, y, centerX, y); // Line to Y-axis
+                g2d.dispose();
+            } else {
+                // Draw line from origin to point
+                g.setColor(Color.RED);
+                g.drawLine(centerX, centerY, x, y);
+            }
 
             // Draw the point
             g.setColor(Color.BLUE);

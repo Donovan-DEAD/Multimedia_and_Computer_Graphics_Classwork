@@ -21,6 +21,8 @@ public class PolarToCartesianView extends JPanel {
         setLayout(new BorderLayout());
         setBorder(BorderFactory.createTitledBorder("Polar to Cartesian"));
 
+        graphPanel.setDrawComponents(true);
+
         JPanel formPanel = new JPanel(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(5, 5, 5, 5);
