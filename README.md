@@ -4,7 +4,6 @@ This repository contains class activities organized as Maven modules within a pa
 
 ## Prerequisites
 
-- Java 23 (Although you may have Java 24 installed, the project compiles for Java 23 thanks to the plugin configuration).
 - Maven Daemon (`mvnd`) installed and available in your `PATH`.
 
 ## Building the Entire Project
