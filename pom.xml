@@ -19,8 +19,9 @@
     <modules>
         <module>homework_1</module>
         <module>homework_2.3</module>
-	<module>homework_2.2</module>
+	    <module>homework_2.2</module>
 	    <module>session_03</module>
+	    <module>classwork_02</module>
     </modules>
 
 </project>

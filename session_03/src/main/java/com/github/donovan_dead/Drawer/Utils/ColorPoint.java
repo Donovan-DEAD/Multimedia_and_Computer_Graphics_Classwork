@@ -15,15 +15,13 @@ public class ColorPoint {
     public float getStartingPoint() {return this.startingPoint;}
     public Color getColor(){return this.color;}
 
-    public void DoSomething(){
-        Color c = new Color(0); 
-    }
-
     public static float[] CalculateDifference(ColorPoint c1 , ColorPoint c2){
         float[] diff = {
             c1.getColor().getRed()-c2.getColor().getRed(),
             c1.getColor().getGreen()-c2.getColor().getGreen(),
-            c1.getColor().getBlue()-c2.getColor().getBlue()};
+            c1.getColor().getBlue()-c2.getColor().getBlue(),
+            c1.getColor().getAlpha()-c2.getColor().getAlpha()
+        };
 
         return diff;
     }
