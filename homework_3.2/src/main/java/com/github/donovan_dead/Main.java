@@ -1,6 +1,5 @@
 package com.github.donovan_dead;
 
-import java.io.File;
 import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,14 +13,43 @@ import com.github.donovan_dead.Utils.DoubleParser;
 import com.github.donovan_dead.tools.Compressor;
 import com.github.donovan_dead.tools.Decompressor;
 
+/**
+ * Main class for the image compression and decompression application.
+ * This class handles command-line argument parsing and orchestrates the compression
+ * or decompression process based on the provided arguments.
+ */
 public class Main{
+    /**
+     * Default epsilon values for Y, Cb, Cr channels used in compression.
+     * These values represent the tolerance for color clustering.
+     */
     private static double[] eps = new double[]{ 0.215d, 0.135d, 0.135d};
+    /**
+     * The BufferedImage to be compressed. Loaded from the input path.
+     */
     private static BufferedImage imgToCompress;
+    /**
+     * The FileInputStream for the image to be decompressed. Loaded from the input path.
+     */
     private static FileInputStream imgToDecompress;
+    /**
+     * The output path where the compressed or decompressed file will be saved.
+     * Defaults to the current directory.
+     */
     private static Path pathOut = Paths.get("./");
+    /**
+     * Flag to indicate the operation mode. True for compression, false for decompression.
+     */
     private static boolean compressing = true;
+    /**
+     * Flag to indicate if the help message should be displayed.
+     */
     private static boolean help = false;
 
+    /**
+     * Prints the command-line arguments help information to the console.
+     * Sets the {@code help} flag to true to prevent further processing.
+     */
     private static void PrintArgumentsHelp(){
         System.out.println("The arguments to run the program are the next:");
         System.out.println("-dc  Flag to indicate if it is decompressing. default compressing true without flag. It comes first");
@@ -36,6 +64,15 @@ public class Main{
         Main.help = true;
     }
 
+
+    /**
+     * Parses the command-line arguments provided to the application.
+     * It identifies flags such as operation mode (-dc), input path (-pi), output path (-po),
+     * epsilon values (-ep), and help flag (-h). It performs basic validation on paths and values.
+     *
+     * @param args The array of command-line arguments.
+     * @throws RuntimeException If critical arguments are missing or invalid.
+     */
     private static void ArgsParser(String[] args) throws RuntimeException{
         if( args.length == 0 ) throw new Error("Not enough arguments to run program");
         Path p;
@@ -132,6 +169,14 @@ public class Main{
 
     }
 
+
+    /**
+     * The entry point of the application.
+     * Parses command-line arguments, initializes the compressor or decompressor,
+     * and executes the corresponding operation. Handles potential exceptions during parsing or execution.
+     *
+     * @param args The command-line arguments passed to the program.
+     */
     public static void main(String[] args) {
         
         try { 

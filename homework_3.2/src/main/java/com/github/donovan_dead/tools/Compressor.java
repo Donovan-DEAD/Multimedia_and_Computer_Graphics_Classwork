@@ -16,14 +16,44 @@ import com.github.donovan_dead.Utils.Colors.YCbCr;
 import com.github.donovan_dead.tools.Cluster.ClusterComparator;
 import com.github.donovan_dead.tools.Cluster.ColorCluster;
 
+/**
+ * The Compressor class provides functionality to compress a BufferedImage using a custom
+ * run-length encoding scheme based on color clustering. It quantizes colors into clusters,
+ * creates a color map, and then encodes the image data with run-length encoding.
+ */
 public class Compressor {
+    /**
+     * Tolerance values for Y, Cb, Cr channels used in color clustering.
+     * These values are multiplied by 255 during initialization.
+     */
     private static double[] tolerance = new double[]{0.1d, 0.1d, 0.1d};
+    /**
+     * The image to be compressed.
+     */
     private static BufferedImage imgToCompress;
+    /**
+     * The output stream for writing the compressed image data.
+     */
     private static DataOutputStream imgOut;
 
+    /**
+     * A list of color clusters identified in the image.
+     */
     private static ArrayList<ColorCluster> clusters = new ArrayList<ColorCluster>();
+    /**
+     * A map from Color objects (specifically cluster centroids) to their corresponding
+     * DynamicByte representation, which includes the color index and bits for that index.
+     */
     private static ConcurrentHashMap<Color, DynamicByte> colorMap = new ConcurrentHashMap<Color, DynamicByte>();
 
+    /**
+     * Initializes the Compressor with specified tolerance, the image to compress, and the output path.
+     * The tolerance values are scaled by 255.
+     *
+     * @param tolerance An array of doubles representing the tolerance for Y, Cb, Cr channels.
+     * @param imgToCompress The BufferedImage object to be compressed.
+     * @param pathOut The output directory path where the compressed image will be saved.
+     */
     public static void InitCompressor(double[] tolerance, BufferedImage imgToCompress, String pathOut){
         Compressor.tolerance[0] = tolerance[0] * 255;
         Compressor.tolerance[1] = tolerance[1] * 255;
@@ -45,6 +75,12 @@ public class Compressor {
         }
     }
 
+    /**
+     * Extracts color clusters from the image to compress. It iterates through each pixel
+     * of the image, and if a pixel's color falls within the range of an existing cluster,
+     * it adjusts that cluster's centroid. Otherwise, a new cluster is created for that color.
+     * Finally, the clusters are sorted.
+     */
     public static void ExtractColorClusters(){
         boolean founded = false;
         for(int i = 0; i < Compressor.imgToCompress.getWidth(); i++){
@@ -72,6 +108,11 @@ public class Compressor {
         Collections.sort(clusters, new ClusterComparator());
     }
 
+    /**
+     * Creates a color map by assigning a unique DynamicByte representation to each color cluster.
+     * The number of bits required for the index is dynamically calculated based on the total
+     * number of clusters.
+     */
     public static void CreateColorMap() {
         int numClusters = clusters.size();
         // Calculate the number of bits needed to represent the cluster indices
@@ -84,6 +125,14 @@ public class Compressor {
         }
     }
 
+    /**
+     * Finds the most suitable DynamicByte for a given color by comparing it to existing color clusters.
+     * It calculates the Euclidean distance in YCbCr color space to find the best matching cluster.
+     * The result is cached in the colorMap for future use.
+     *
+     * @param c The Color for which to find the DynamicByte.
+     * @return The DynamicByte associated with the best matching color cluster, or null if no match is found (should be unreachable).
+     */
     public static DynamicByte FoundDynamicByte(Color c) {
         ColorCluster bestMatch = null;
         double minDistanceSq = Double.MAX_VALUE;
@@ -113,6 +162,13 @@ public class Compressor {
         return null; // Should be unreachable
     }
 
+    /**
+     * Processes the image pixel by pixel, converting colors into their corresponding
+     * DynamicByte representations and applying run-length encoding.
+     * It uses virtual threads to process each row concurrently for improved performance.
+     *
+     * @return A DynamicByteContainer holding the compressed image data.
+     */
     public static DynamicByteContainer ProccesImage(){
         DynamicByteContainer masterContainer = new DynamicByteContainer();
         ThreadFactory tf = Thread.ofVirtual().factory();
@@ -179,6 +235,12 @@ public class Compressor {
         return masterContainer;
     }
 
+    /**
+     * Writes the compressed image data, including image dimensions, color palette, and pixel data,
+     * to the initialized output stream.
+     *
+     * @param imgDataCompressed The DynamicByteContainer holding the compressed pixel data.
+     */
     public static void WriteImage(DynamicByteContainer imgDataCompressed){
         try{
 
@@ -203,6 +265,13 @@ public class Compressor {
 
 
 
+    /**
+     * Executes the complete image compression process:
+     * 1. Extracts color clusters from the image.
+     * 2. Creates a color map based on the clusters.
+     * 3. Processes the image to generate compressed data.
+     * 4. Writes the compressed data to the output file.
+     */
     public static void RunCompression(){
         Compressor.ExtractColorClusters();
         Compressor.CreateColorMap();

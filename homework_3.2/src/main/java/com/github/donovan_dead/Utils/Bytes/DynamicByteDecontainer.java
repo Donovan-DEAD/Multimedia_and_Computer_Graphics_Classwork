@@ -2,10 +2,27 @@ package com.github.donovan_dead.Utils.Bytes;
 
 import java.io.IOException;
 
+/**
+ * A utility class for reading a sequence of bits from a byte array.
+ * It allows for reading variable-length integers from a stream of bits,
+ * handling bit manipulation and tracking the current position.
+ */
 public class DynamicByteDecontainer {
+    /**
+     * The byte array containing the data to be de-containerized.
+     */
     private final byte[] data;
+    /**
+     * The current position in bits from the start of the data array.
+     * This indicates how many bits have already been read.
+     */
     private int bitPosition; // The current position in bits from the start of the data array
 
+    /**
+     * Constructs a new DynamicByteDecontainer with the given byte array.
+     * Initializes the bit position to 0.
+     * @param data The byte array containing the bitstream data.
+     */
     public DynamicByteDecontainer(byte[] data) {
         this.data = data;
         this.bitPosition = 0;
@@ -16,6 +33,13 @@ public class DynamicByteDecontainer {
      * @param numBits The number of bits to read (0-64).
      * @return The long value of the read bits.
      * @throws IOException If trying to read beyond the end of the stream.
+     */
+
+    /**
+     * Reads a specific number of bits from the stream.
+     * @param numBits The number of bits to read (0-64).
+     * @return The long value of the read bits.
+     * @throws IOException If trying to read beyond the end of the stream or if numBits is invalid.
      */
     public long read(int numBits) throws IOException {
         if (numBits < 0 || numBits > 64) {

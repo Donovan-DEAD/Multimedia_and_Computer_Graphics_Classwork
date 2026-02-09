@@ -13,8 +13,22 @@ import javax.imageio.ImageIO;
 
 import com.github.donovan_dead.Utils.Bytes.DynamicByteDecontainer; // Import the new class
 
+/**
+ * The Decompressor class provides functionality to decompress an image that was
+ * previously compressed using a custom run-length encoding and color palette.
+ */
 public class Decompressor {
 
+    /**
+     * Decompresses an image from a given FileInputStream and saves it to the specified output path.
+     * The decompression process involves reading image metadata (width, height, color count),
+     * reconstructing the color palette, and then de-encoding the pixel data using a
+     * DynamicByteDecontainer.
+     *
+     * @param fileIn The FileInputStream containing the compressed image data.
+     * @param pathOut The Path where the decompressed image (as a JPG) will be saved.
+     * @throws IOException If an I/O error occurs during reading or writing.
+     */
     public static void runDecompression(FileInputStream fileIn, Path pathOut) throws IOException {
         DataInputStream dis = new DataInputStream(
             new GZIPInputStream(fileIn)
