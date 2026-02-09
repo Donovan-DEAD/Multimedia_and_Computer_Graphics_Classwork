@@ -15,7 +15,7 @@ import com.github.donovan_dead.tools.Compressor;
 import com.github.donovan_dead.tools.Decompressor;
 
 public class Main{
-    private static double[] eps = new double[]{ 0.1d, 0.1d, 0.1d};
+    private static double[] eps = new double[]{ 0.215d, 0.135d, 0.135d};
     private static BufferedImage imgToCompress;
     private static FileInputStream imgToDecompress;
     private static Path pathOut = Paths.get("./");
@@ -64,7 +64,7 @@ public class Main{
                         if (Files.exists(p) && Files.isRegularFile(p)) {
                     
                             String nombre = p.getFileName().toString().toLowerCase();
-                            if (nombre.endsWith(".bimg")) {
+                            if (nombre.endsWith(".bimg") || nombre.endsWith(".bimg.gz")) {
                                 try {
                                     FileInputStream fis = new FileInputStream(p.toFile());
                                     Main.imgToDecompress = fis;

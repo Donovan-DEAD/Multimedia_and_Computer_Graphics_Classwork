@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadFactory;
+import java.util.zip.GZIPOutputStream;
 
 import com.github.donovan_dead.Utils.Bytes.DynamicByte;
 import com.github.donovan_dead.Utils.Bytes.DynamicByteContainer;
@@ -31,7 +32,11 @@ public class Compressor {
         Compressor.imgToCompress = imgToCompress;
         try{
         
-            Compressor.imgOut = new DataOutputStream(new FileOutputStream(pathOut + "/compressed.bimg"));
+            Compressor.imgOut = new DataOutputStream(
+                new GZIPOutputStream(
+                    new FileOutputStream(pathOut + "/compressed.bimg.gz")
+                ) 
+            );
 
         } catch(Exception e){
 
@@ -68,26 +73,18 @@ public class Compressor {
     }
 
     public static void CreateColorMap() {
+        int numClusters = clusters.size();
+        // Calculate the number of bits needed to represent the cluster indices
+        int bitsForIndex = (numClusters > 1) ? (int) Math.ceil(Math.log(numClusters) / Math.log(2)) : 1;
 
         for (int i = 0; i < clusters.size(); i++) {
             ColorCluster c = clusters.get(i);
             Color centroid = c.getCentroid();
-
-            DynamicByte db = new DynamicByte(i);
-            Compressor.colorMap.put(centroid, db);
+            Compressor.colorMap.put(centroid, new DynamicByte(i, bitsForIndex));
         }
-
     }
 
     public static DynamicByte FoundDynamicByte(Color c) {
-        for (ColorCluster cl : clusters) {
-            if (cl.isInRange(c)) {
-                DynamicByte db = Compressor.colorMap.get(cl.getCentroid());
-                Compressor.colorMap.put(c, db);
-                return db;
-            }
-        }
-
         ColorCluster bestMatch = null;
         double minDistanceSq = Double.MAX_VALUE;
         YCbCr targetColorYCbCr = new YCbCr(c);
@@ -113,40 +110,61 @@ public class Compressor {
             return db;
         }
 
-        return null; // Should be unreachable if clusters list is not empty
+        return null; // Should be unreachable
     }
 
     public static DynamicByteContainer ProccesImage(){
         DynamicByteContainer masterContainer = new DynamicByteContainer();
         ThreadFactory tf = Thread.ofVirtual().factory();
 
-        ArrayList<Thread> threads = new ArrayList<Thread>();
-        ArrayList<DynamicByteContainer> containers = new ArrayList<DynamicByteContainer>();
-
+        ArrayList<Thread> threads = new ArrayList<>();
+        ArrayList<DynamicByteContainer> containers = new ArrayList<>();
         
-        for(int h = 0; h < Compressor.imgToCompress.getHeight(); h++){
+        int numClusters = clusters.size();
+        final int bitsForIndex = (numClusters > 1) ? (int) Math.ceil(Math.log(numClusters) / Math.log(2)) : 1;
+
+        for (int h = 0; h < Compressor.imgToCompress.getHeight(); h++) {
             containers.add(new DynamicByteContainer());
-
             final int row = h;
-            final DynamicByteContainer container = containers.get(h);
+            final DynamicByteContainer container = containers.get(row);
 
-            Runnable task = ()->{
-                for(int w = 0; w < Compressor.imgToCompress.getWidth(); w++){
-                    Color c = new Color(Compressor.imgToCompress.getRGB(w, row));
-                    
+            Runnable task = () -> {
+                ArrayList<Long> rowIndex = new ArrayList<>();
+                for (int x = 0; x < Compressor.imgToCompress.getWidth(); x++) {
+                    Color c = new Color(Compressor.imgToCompress.getRGB(x, row));
                     DynamicByte db = Compressor.colorMap.get(c);
-                    if(db == null) db = Compressor.FoundDynamicByte(c);
-                    
-                    container.add(db);
+                    if (db == null) {
+                        db = FoundDynamicByte(c);
+                    }
+                    rowIndex.add(db.getValue());
+                }
+
+                int i = 0;
+                while (i < rowIndex.size()) {
+                    Long currentIndex = rowIndex.get(i);
+                    int runLength = 1;
+                    while (runLength < 256 && (i + runLength) < rowIndex.size() && rowIndex.get(i + runLength).equals(currentIndex)) {
+                        runLength++;
+                    }
+
+                    if (runLength > 1) {
+                        container.write(currentIndex, bitsForIndex);
+                        container.write(1, 1);
+                        container.write(runLength - 1, 8);
+                    } else {
+                        container.write(currentIndex, bitsForIndex);
+                        container.write(0, 1);
+                    }
+                    i += runLength;
                 }
             };
 
             Thread t = tf.newThread(task);
             threads.add(t);
-            t.start();      
+            t.start();
         }
 
-        for(Thread t : threads){
+        for (Thread t : threads) {
             try {
                 t.join();
             } catch (InterruptedException e) {
@@ -154,7 +172,7 @@ public class Compressor {
             }
         }
 
-        for(DynamicByteContainer dc : containers){
+        for (DynamicByteContainer dc : containers) {
             masterContainer.append(dc);
         }
 

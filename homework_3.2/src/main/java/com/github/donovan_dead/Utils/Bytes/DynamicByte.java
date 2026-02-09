@@ -1,40 +1,25 @@
 package com.github.donovan_dead.Utils.Bytes;
 
 public class DynamicByte {
-    private final byte[] data;
-    private final int size;
+    private final long value;
+    private final int numBits;
+
     /**
-     * Constructor que recibe el número de unos a generar.
-     * Se crean 'n' bits en 1 y se añade un bit 0 al final.
+     * Constructor to hold a value and the number of bits it represents.
      *
-     * @param onesCount número de bits en 1
+     * @param value The long value to be stored.
+     * @param numBits The number of bits this value should be written with.
      */
-    public DynamicByte(int onesCount) {
-        if (onesCount < 0) {
-            throw new IllegalArgumentException("El número de unos no puede ser negativo.");
-        }
-
-        this.size = onesCount;
-        
-        int totalBits = onesCount + 1;
-        int totalBytes = (int) Math.ceil(totalBits / 8.0);
-
-        data = new byte[totalBytes];
-
-        for (int i = 0; i < onesCount; i++) {
-            int byteIndex = i / 8;
-            int bitIndex = 7 - (i % 8);
-            data[byteIndex] |= (1 << bitIndex);
-        }
-
+    public DynamicByte(long value, int numBits) {
+        this.value = value;
+        this.numBits = numBits;
     }
 
-    public byte[] getData() {
-        return data;
+    public long getValue() {
+        return value;
     }
 
-    public int getSize() {
-        return size;
+    public int getNumBits() {
+        return numBits;
     }
-
 }
