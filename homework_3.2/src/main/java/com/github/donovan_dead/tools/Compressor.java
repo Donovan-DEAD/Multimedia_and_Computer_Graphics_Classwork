@@ -2,6 +2,7 @@ package com.github.donovan_dead.tools;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
+import java.io.DataOutputStream;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -10,13 +11,14 @@ import java.util.concurrent.ThreadFactory;
 
 import com.github.donovan_dead.Utils.Bytes.DynamicByte;
 import com.github.donovan_dead.Utils.Bytes.DynamicByteContainer;
+import com.github.donovan_dead.Utils.Colors.YCbCr;
 import com.github.donovan_dead.tools.Cluster.ClusterComparator;
 import com.github.donovan_dead.tools.Cluster.ColorCluster;
 
 public class Compressor {
     private static double[] tolerance = new double[]{0.1d, 0.1d, 0.1d};
     private static BufferedImage imgToCompress;
-    private static FileOutputStream imgOut;
+    private static DataOutputStream imgOut;
 
     private static ArrayList<ColorCluster> clusters = new ArrayList<ColorCluster>();
     private static ConcurrentHashMap<Color, DynamicByte> colorMap = new ConcurrentHashMap<Color, DynamicByte>();
@@ -29,7 +31,7 @@ public class Compressor {
         Compressor.imgToCompress = imgToCompress;
         try{
         
-            Compressor.imgOut = new FileOutputStream(pathOut + "/compressed.bimg");
+            Compressor.imgOut = new DataOutputStream(new FileOutputStream(pathOut + "/compressed.bimg"));
 
         } catch(Exception e){
 
@@ -82,12 +84,36 @@ public class Compressor {
             if (cl.isInRange(c)) {
                 DynamicByte db = Compressor.colorMap.get(cl.getCentroid());
                 Compressor.colorMap.put(c, db);
-
                 return db;
             }
         }
 
-        return null;
+        ColorCluster bestMatch = null;
+        double minDistanceSq = Double.MAX_VALUE;
+        YCbCr targetColorYCbCr = new YCbCr(c);
+
+        for (ColorCluster cl : clusters) {
+            YCbCr centroidYCbCr = new YCbCr(cl.getCentroid());
+            
+            double distY = targetColorYCbCr.getY() - centroidYCbCr.getY();
+            double distCb = targetColorYCbCr.getCb() - centroidYCbCr.getCb();
+            double distCr = targetColorYCbCr.getCr() - centroidYCbCr.getCr();
+            
+            double distanceSq = (distY * distY) + (distCb * distCb) + (distCr * distCr);
+
+            if (distanceSq < minDistanceSq) {
+                minDistanceSq = distanceSq;
+                bestMatch = cl;
+            }
+        }
+
+        if (bestMatch != null) {
+            DynamicByte db = Compressor.colorMap.get(bestMatch.getCentroid());
+            Compressor.colorMap.put(c, db);
+            return db;
+        }
+
+        return null; // Should be unreachable if clusters list is not empty
     }
 
     public static DynamicByteContainer ProccesImage(){
@@ -138,11 +164,11 @@ public class Compressor {
     public static void WriteImage(DynamicByteContainer imgDataCompressed){
         try{
 
-            imgOut.write(imgToCompress.getWidth());
-            imgOut.write(imgToCompress.getHeight());
+            imgOut.writeInt(imgToCompress.getWidth());
+            imgOut.writeInt(imgToCompress.getHeight());
 
-            imgOut.write(clusters.size());
-            for(ColorCluster c : clusters) imgOut.write(c.getCentroid().getRGB());
+            imgOut.writeInt(clusters.size());
+            for(ColorCluster c : clusters) imgOut.writeInt(c.getCentroid().getRGB());
             
             imgOut.write(imgDataCompressed.getPackedData());
 

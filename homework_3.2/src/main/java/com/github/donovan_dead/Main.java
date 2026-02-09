@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 
 import com.github.donovan_dead.Utils.DoubleParser;
 import com.github.donovan_dead.tools.Compressor;
+import com.github.donovan_dead.tools.Decompressor;
 
 public class Main{
     private static double[] eps = new double[]{ 0.1d, 0.1d, 0.1d};
@@ -23,7 +24,7 @@ public class Main{
 
     private static void PrintArgumentsHelp(){
         System.out.println("The arguments to run the program are the next:");
-        System.out.println("-dc  Flag to indicate if it is decompressing. default compressing true without flag.");
+        System.out.println("-dc  Flag to indicate if it is decompressing. default compressing true without flag. It comes first");
         System.out.println("-pi Flag that indicates the path to the image to apply conversion ");
         System.out.println("-po Flag that indicates the path where is going put the result. default actual directory.");
         System.out.println("-ep Flag that indicates the epsilon values for each channel, it can be 1 or 3 floats in the range of 0 to 1. default 0.1 in each channel.");
@@ -98,9 +99,14 @@ public class Main{
                     break;
 
                 case "-ep":
-                    DoubleParser.ParseDouble(args[i+1], 0d, 1d , eps, 0, -1d);
-                    DoubleParser.ParseDouble(args[i+2], 0d, 1d , eps, 1, -1d);
-                    DoubleParser.ParseDouble(args[i+3], 0d, 1d , eps, 2, -1d);
+                    try {
+                        
+                        DoubleParser.ParseDouble(args[i+1], 0d, 1d , eps, 0, -1d);
+                        DoubleParser.ParseDouble(args[i+2], 0d, 1d , eps, 1, -1d);
+                        DoubleParser.ParseDouble(args[i+3], 0d, 1d , eps, 2, -1d);
+                    } catch (Exception e) {
+                        
+                    }
 
                     if(eps[2] != -1d){ 
                         i += 3;
@@ -137,10 +143,15 @@ public class Main{
                 Compressor.InitCompressor(eps, imgToCompress, pathOut.toString());
                 Compressor.RunCompression();
             } else {
-                System.out.println("Working on it");
+                if (imgToDecompress == null) {
+                    System.err.println("Error: Decompression flag '-dc' was used, but no input file was provided with '-pi'.");
+                    return;
+                }
+                Decompressor.runDecompression(imgToDecompress, pathOut);
             }
 
         } catch(Exception e) {
+            e.printStackTrace();
             System.out.println(e.getMessage());
             return;
         }
