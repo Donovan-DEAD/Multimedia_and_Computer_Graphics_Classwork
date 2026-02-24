@@ -3,6 +3,8 @@ package com.github.donovan_dead.Actions;
 import java.awt.image.BufferedImage;
 import java.util.Stack;
 
+import com.github.donovan_dead.Utils.ImageUtils;
+
 public class ActionExecutioner {
     private Stack<Actionable> actions;
     private Stack<Actionable> undoneActions;
@@ -13,12 +15,21 @@ public class ActionExecutioner {
 
     public ActionExecutioner( BufferedImage init){
         actions = new Stack<Actionable>();
+        undoneActions = new Stack<Actionable>();
+
         initImage = init;
         lastImg = init;
     }
 
     public void addAction(Actionable action){
         actions.add(action);
+    }
+
+    public void setNewImage(BufferedImage img){
+        initImage = img;
+        lastImg = img;
+        clearActions();
+        undoneActions.clear();
     }
     
     public void  regainLostAction(){
@@ -43,7 +54,8 @@ public class ActionExecutioner {
     }
 
     public BufferedImage executeActions(){
-        BufferedImage current = initImage;
+        if (initImage == null) return null;
+        BufferedImage current = ImageUtils.deepCopy(initImage);
 
         for(Actionable a : actions){
             current = a.ApplyAction(current);

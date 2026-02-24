@@ -27,54 +27,59 @@ public class CropImage implements Actionable{
         points[3] = p4;
     }
 
-    private void correctComponents(BufferedImage img){
-        for(Point2D p : points) {
-            if(p == null) continue;
+    private Point2D[] getCorrectedPoints(BufferedImage img){
+        Point2D[] correctedPoints = new Point2D[points.length];
+        for(int i = 0; i < points.length; i++) {
+            if(points[i] == null) continue;
             
-            if(p.getY() > img.getHeight()) p.setLocation(p.getX(), img.getHeight());
-            if(p.getY() < 0) p.setLocation(p.getX(), 0);
+            double x = points[i].getX();
+            double y = points[i].getY();
 
-            if(p.getX() < 0) p.setLocation(0, p.getY());
-            if(p.getX() > img.getWidth()) p.setLocation(img.getWidth(), p.getY());
+            if(y > img.getHeight()) y = img.getHeight();
+            if(y < 0) y = 0;
 
-            p.setLocation(p.getX(), img.getHeight() - p.getY());
+            if(x < 0) x = 0;
+            if(x > img.getWidth()) x = img.getWidth();
+
+            correctedPoints[i] = new Point2D.Double(x, img.getHeight() - y);
         }
+        return correctedPoints;
     }
 
     @Override
     public BufferedImage ApplyAction( BufferedImage img ){
-        correctComponents(img);
+        Point2D[] correctedPoints = getCorrectedPoints(img);
 
-        if(isRectangle) return cropRectangle(img);
+        if(isRectangle) return cropRectangle(img, correctedPoints);
         else {
-            SortByDegree.calculateCentroid(points);
+            SortByDegree.calculateCentroid(correctedPoints);
             SortByDegree sd = new SortByDegree();
-            Arrays.sort(points, sd);
+            Arrays.sort(correctedPoints, sd);
 
-            return cropIrregularRectangule(img);
+            return cropIrregularRectangule(img, correctedPoints);
         }
     }
 
-    private BufferedImage cropRectangle( BufferedImage img ){
+    private BufferedImage cropRectangle( BufferedImage img, Point2D[] pts ){
 
         BufferedImage newImg = img.getSubimage(
-            (int)Math.min(points[0].getX(), points[1].getX()), 
-            (int)Math.min(points[0].getY(), points[1].getY()),
-            (int)Math.abs(points[1].getX()-points[0].getX()), 
-            (int)Math.abs(points[1].getY()-points[0].getY())
+            (int)Math.min(pts[0].getX(), pts[1].getX()), 
+            (int)Math.min(pts[0].getY(), pts[1].getY()),
+            (int)Math.abs(pts[1].getX()-pts[0].getX()), 
+            (int)Math.abs(pts[1].getY()-pts[0].getY())
         );
         
         return newImg;
     }
 
-    private BufferedImage cropIrregularRectangule( BufferedImage img ){
+    private BufferedImage cropIrregularRectangule( BufferedImage img, Point2D[] pts ){
         double minX = img.getWidth() + 1;
         double minY = img.getHeight() + 1;
         double maxX = -1;
         double maxY = -1;
 
 
-        for(Point2D p : points){
+        for(Point2D p : pts){
             if(p == null) continue;
 
             if(p.getX() < minX) minX = p.getX();
@@ -86,15 +91,15 @@ public class CropImage implements Actionable{
         }
 
         BufferedImage newImg = new BufferedImage(
-            (int) Math.abs(maxX - minX),
-            (int) Math.abs(maxY - minY),
+            (int) Math.max(1, Math.abs(maxX - minX)),
+            (int) Math.max(1, Math.abs(maxY - minY)),
             BufferedImage.TYPE_INT_RGB
         );
 
         ArrayList<Thread> threads = new ArrayList<>();
         ThreadFactory factory = Thread.ofVirtual().factory();
 
-        final double cropArea = Calculator.CalculateAreaOfRectangule(points);
+        final double cropArea = Calculator.CalculateAreaOfRectangule(pts);
         final double tolerance = 1d + 1e-6;
         
         for (int h = (int) minY; h < (int) maxY; h++) {
@@ -108,10 +113,10 @@ public class CropImage implements Actionable{
                     Point2D p = new Point2D.Double(w, height);
 
                     double areaSum =
-                      Calculator.CalculateAreaOfTriangule(points[0], points[1], p)
-                    + Calculator.CalculateAreaOfTriangule(points[1], points[2], p)
-                    + Calculator.CalculateAreaOfTriangule(points[2], points[3], p)
-                    + Calculator.CalculateAreaOfTriangule(points[3], points[0], p);
+                      Calculator.CalculateAreaOfTriangule(pts[0], pts[1], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[1], pts[2], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[2], pts[3], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[3], pts[0], p);
 
                     boolean dentro = cropArea * tolerance >= areaSum;
 

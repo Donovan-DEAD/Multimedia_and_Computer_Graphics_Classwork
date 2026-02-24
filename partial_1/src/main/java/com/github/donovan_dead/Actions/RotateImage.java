@@ -33,43 +33,48 @@ public class RotateImage implements Actionable {
         this.points[3] = p4;
     }
     
-    private void correctComponents(BufferedImage img){
-        for(Point2D p : points) {
-            if(p == null) continue;
+    private Point2D[] getCorrectedPoints(BufferedImage img){
+        Point2D[] correctedPoints = new Point2D[points.length];
+        for(int i = 0; i < points.length; i++) {
+            if(points[i] == null) continue;
             
-            if(p.getY() > img.getHeight()) p.setLocation(p.getX(), img.getHeight());
-            if(p.getY() < 0) p.setLocation(p.getX(), 0);
+            double x = points[i].getX();
+            double y = points[i].getY();
 
-            if(p.getX() < 0) p.setLocation(0, p.getY());
-            if(p.getX() > img.getWidth()) p.setLocation(img.getWidth(), p.getY());
+            if(y > img.getHeight()) y = img.getHeight();
+            if(y < 0) y = 0;
 
-            p.setLocation(p.getX(), img.getHeight() - p.getY());
+            if(x < 0) x = 0;
+            if(x > img.getWidth()) x = img.getWidth();
+
+            correctedPoints[i] = new Point2D.Double(x, img.getHeight() - y);
         }
+        return correctedPoints;
     }
 
 
     @Override
     public BufferedImage ApplyAction(BufferedImage img){
-        correctComponents(img);
+        Point2D[] correctedPoints = getCorrectedPoints(img);
 
-        if(isRectangle) return rotateRectangule(img);
+        if(isRectangle) return rotateRectangule(img, correctedPoints);
         else {
-            SortByDegree.calculateCentroid(points);
+            SortByDegree.calculateCentroid(correctedPoints);
             SortByDegree sd = new SortByDegree();
-            Arrays.sort(points, sd);
+            Arrays.sort(correctedPoints, sd);
            
-            return rotateIrregularRectangule(img);
+            return rotateIrregularRectangule(img, correctedPoints);
         }
     }
 
-    private BufferedImage rotateRectangule( BufferedImage img ){
-        centroid = new Point2D.Double((points[0].getX() + points[1].getX())/2, (points[0].getY() + points[1].getY())/2);
+    private BufferedImage rotateRectangule( BufferedImage img, Point2D[] pts ){
+        centroid = new Point2D.Double((pts[0].getX() + pts[1].getX())/2, (pts[0].getY() + pts[1].getY())/2);
         BufferedImage newImg = ImageUtils.deepCopy(img);
 
-        final double minX = Math.min(points[0].getX(), points[1].getX());
-        final double minY = Math.min(points[0].getY(), points[1].getY());
-        final double maxX = Math.max(points[0].getX(), points[1].getX());
-        final double maxY = Math.max(points[0].getY(), points[1].getY());
+        final double minX = Math.min(pts[0].getX(), pts[1].getX());
+        final double minY = Math.min(pts[0].getY(), pts[1].getY());
+        final double maxX = Math.max(pts[0].getX(), pts[1].getX());
+        final double maxY = Math.max(pts[0].getY(), pts[1].getY());
 
         // Color the space in black where it was the original image
         for(int h = (int)minY; h < maxY; h++)
@@ -92,14 +97,14 @@ public class RotateImage implements Actionable {
         return newImg;
     }
 
-    private BufferedImage rotateIrregularRectangule( BufferedImage img ){
+    private BufferedImage rotateIrregularRectangule( BufferedImage img, Point2D[] pts ){
         centroid = SortByDegree.getCentroid();
 
         BufferedImage newImg = ImageUtils.deepCopy(img);        
         ArrayList<Thread> threads = new ArrayList<>();
         ThreadFactory factory = Thread.ofVirtual().factory();
 
-        final double cropArea = Calculator.CalculateAreaOfRectangule(points);
+        final double cropArea = Calculator.CalculateAreaOfRectangule(pts);
 
         double minX = img.getWidth() + 1;
         double minY = img.getHeight() + 1;
@@ -107,7 +112,7 @@ public class RotateImage implements Actionable {
         double maxY = -1;
 
 
-        for(Point2D p : points){
+        for(Point2D p : pts){
             if(p.getX() < minX) minX = p.getX();
             if(p.getX() > maxX) maxX = p.getX();
 
@@ -120,10 +125,10 @@ public class RotateImage implements Actionable {
                 Point2D p = new Point2D.Double(w, h);
 
                 if( cropArea < 
-                      Calculator.CalculateAreaOfTriangule(points[0], points[1], p)
-                    + Calculator.CalculateAreaOfTriangule(points[1], points[2], p)
-                    + Calculator.CalculateAreaOfTriangule(points[2], points[3], p)
-                    + Calculator.CalculateAreaOfTriangule(points[3], points[0], p)
+                      Calculator.CalculateAreaOfTriangule(pts[0], pts[1], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[1], pts[2], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[2], pts[3], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[3], pts[0], p)
                 ) continue;
 
                 newImg.setRGB(w, h, Color.BLACK.getRGB());
@@ -141,10 +146,10 @@ public class RotateImage implements Actionable {
                     Point2D p = new Point2D.Double(w, height);
 
                     double areaSum =
-                      Calculator.CalculateAreaOfTriangule(points[0], points[1], p)
-                    + Calculator.CalculateAreaOfTriangule(points[1], points[2], p)
-                    + Calculator.CalculateAreaOfTriangule(points[2], points[3], p)
-                    + Calculator.CalculateAreaOfTriangule(points[3], points[0], p);
+                      Calculator.CalculateAreaOfTriangule(pts[0], pts[1], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[1], pts[2], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[2], pts[3], p)
+                    + Calculator.CalculateAreaOfTriangule(pts[3], pts[0], p);
 
                     boolean dentro = cropArea >= areaSum;
 
