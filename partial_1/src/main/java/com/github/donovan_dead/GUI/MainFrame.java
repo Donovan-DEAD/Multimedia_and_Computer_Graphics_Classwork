@@ -74,7 +74,8 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         JScrollPane scrollPane = new JScrollPane(controlsPanel);
         scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
         scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        scrollPane.setPreferredSize(new Dimension(280, getHeight())); // Give some extra width for scrollbar
+        // Let the BorderLayout manage the height.
+
 
         add(scrollPane, BorderLayout.EAST);
     }
