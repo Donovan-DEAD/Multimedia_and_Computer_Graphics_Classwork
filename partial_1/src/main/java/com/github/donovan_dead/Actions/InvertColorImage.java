@@ -9,18 +9,38 @@ import java.util.concurrent.ThreadFactory;
 import com.github.donovan_dead.Utils.Calculator;
 import com.github.donovan_dead.Utils.SortByDegree;
 
+/**
+ * The `InvertColorImage` class implements the `Actionable` interface to invert the colors
+ * of an image within a specified region. It supports both rectangular and irregular
+ * quadrilateral regions for color inversion.
+ */
 public class InvertColorImage implements Actionable {
     
+    /** An array of `Point2D` objects defining the region for color inversion. */
     private Point2D[] points = new Point2D[4];
+    /** A boolean flag indicating whether the inversion operation is a simple rectangle. */
     private boolean isRectangle =false;
 
-    
+    /**
+     * Constructor for inverting colors within a rectangular region.
+     *
+     * @param p1 The first point defining the rectangle.
+     * @param p2 The second point defining the rectangle.
+     */
     public InvertColorImage(Point2D p1, Point2D p2){
         points[0] = p1;
         points[1] = p2;
         isRectangle = true;
     }
 
+    /**
+     * Constructor for inverting colors within an irregular quadrilateral region.
+     *
+     * @param p1 The first point of the quadrilateral.
+     * @param p2 The second point of the quadrilateral.
+     * @param p3 The third point of the quadrilateral.
+     * @param p4 The fourth point of the quadrilateral.
+     */
     public InvertColorImage(Point2D p1, Point2D p2, Point2D p3, Point2D p4){
         points[0] = p1;
         points[1] = p2;
@@ -28,6 +48,12 @@ public class InvertColorImage implements Actionable {
         points[3] = p4;
     }
 
+    /**
+     * Corrects the given points to be within the bounds of the image and adjusts for coordinate system differences.
+     *
+     * @param img The `BufferedImage` to use for boundary checking.
+     * @return An array of `Point2D` objects with corrected coordinates.
+     */
     private Point2D[] getCorrectedPoints(BufferedImage img){
         Point2D[] correctedPoints = new Point2D[points.length];
         for(int i = 0; i < points.length; i++) {
@@ -47,6 +73,13 @@ public class InvertColorImage implements Actionable {
         return correctedPoints;
     }
 
+    /**
+     * Applies the color inversion action to the input image within the specified region.
+     * Depending on the constructor used, it performs either a rectangular or an irregular quadrilateral inversion.
+     *
+     * @param img The `BufferedImage` to which the color inversion will be applied.
+     * @return The modified `BufferedImage` with inverted colors in the specified region.
+     */
     @Override
     public BufferedImage ApplyAction(BufferedImage img){
         Point2D[] correctedPoints = getCorrectedPoints(img);
@@ -62,6 +95,13 @@ public class InvertColorImage implements Actionable {
         }
     }
 
+    /**
+     * Inverts the colors within a rectangular region of the image.
+     *
+     * @param img The `BufferedImage` to modify.
+     * @param pts An array containing two `Point2D` objects defining the rectangle.
+     * @return The modified `BufferedImage` with inverted colors in the rectangular region.
+     */
     private BufferedImage invertRectangule( BufferedImage img, Point2D[] pts ){
         int start_x = (int)Math.min(pts[0].getX(), pts[1].getX());
         int start_y = (int)Math.min(pts[0].getY(), pts[1].getY());
@@ -76,6 +116,14 @@ public class InvertColorImage implements Actionable {
         return img;
     }
 
+    /**
+     * Inverts the colors within an irregular quadrilateral region of the image.
+     * This method uses multithreading to process the image pixels efficiently.
+     *
+     * @param img The `BufferedImage` to modify.
+     * @param pts An array containing four `Point2D` objects defining the irregular quadrilateral.
+     * @return The modified `BufferedImage` with inverted colors in the irregular region.
+     */
     private BufferedImage invertIrregularRectangule( BufferedImage img, Point2D[] pts ){
         double minX = img.getWidth() + 1;
         double minY = img.getHeight() + 1;

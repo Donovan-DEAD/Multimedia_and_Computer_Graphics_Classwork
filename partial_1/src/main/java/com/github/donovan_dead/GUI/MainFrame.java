@@ -11,13 +11,25 @@ import javax.imageio.ImageIO;
 import com.github.donovan_dead.Actions.Actionable;
 import com.github.donovan_dead.Actions.ActionExecutioner;
 
+/**
+ * The `MainFrame` class is the main window of the image editor application.
+ * It sets up the user interface, including the menu bar, control panel, and image display area.
+ * It also implements the `ImageEditorListener` to handle all image processing logic.
+ */
 public class MainFrame extends JFrame implements ImageEditorListener {
 
+    /** The panel responsible for displaying the image. */
     private ImagePanel imagePanel;
+    /** The executioner that manages and applies image actions. */
     private ActionExecutioner actionExecutioner;
+    /** The original, unmodified image loaded by the user. */
     private BufferedImage originalImage;
-    private File currentImageFile; // Keep track of the last opened/saved file location
+    /** The file of the currently loaded image, used for context in file dialogs. */
+    private File currentImageFile;
 
+    /**
+     * Constructs the main application frame and initializes all UI components.
+     */
     public MainFrame() {
         setTitle("Image Editor");
         setSize(1000, 800);
@@ -39,6 +51,9 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         setupControlsPanel();
     }
 
+    /**
+     * Sets up the main menu bar with "File" and "Edit" menus.
+     */
     private void setupMenuBar() {
         JMenuBar menuBar = new JMenuBar();
         JMenu fileMenu = new JMenu("File");
@@ -69,6 +84,9 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         setJMenuBar(menuBar);
     }
 
+    /**
+     * Sets up the control panel on the east side of the frame.
+     */
     private void setupControlsPanel() {
         ControlsPanel controlsPanel = new ControlsPanel(this);
         JScrollPane scrollPane = new JScrollPane(controlsPanel);
@@ -80,6 +98,11 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         add(scrollPane, BorderLayout.EAST);
     }
 
+    /**
+     * Opens an image file using a `JFileChooser` and displays it.
+     * This resets the action history and sets the new image as the original.
+     * @param file (Unused) Can be extended to open a specific file directly.
+     */
     @Override
     public void openImage(File file) {
         JFileChooser fileChooser = new JFileChooser();
@@ -103,6 +126,12 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         }
     }
 
+    /**
+     * Saves the currently displayed image to a file using a `JFileChooser`.
+     * It suggests a processed filename and determines the format from the extension.
+     * @param image The image to be saved.
+     * @param file (Unused) Can be extended to save to a specific file directly.
+     */
     @Override
     public void saveImage(BufferedImage image, File file) {
         if (imagePanel.getCurrentImage() == null) {
@@ -137,6 +166,10 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         }
     }
 
+    /**
+     * Adds an action to the `ActionExecutioner`.
+     * @param action The `Actionable` to be added to the queue.
+     */
     @Override
     public void addAction(Actionable action) {
         if (originalImage == null) {
@@ -146,6 +179,9 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         actionExecutioner.addAction(action);
     }
 
+    /**
+     * Executes all queued actions and updates the `ImagePanel` with the result.
+     */
     @Override
     public void updateImageDisplay() {
         if (originalImage == null) return; // No image loaded yet
@@ -154,6 +190,10 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         imagePanel.setImage(processedImage);
     }
 
+    /**
+     * Undoes the last action by popping it from the `ActionExecutioner` stack
+     * and updating the display.
+     */
     @Override
     public void undoAction() {
         if (originalImage == null) return;
@@ -161,6 +201,10 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         updateImageDisplay();
     }
 
+    /**
+     * Redoes the last undone action by moving it back to the action stack
+     * and updating the display.
+     */
     @Override
     public void redoAction() {
         if (originalImage == null) return;
@@ -168,16 +212,29 @@ public class MainFrame extends JFrame implements ImageEditorListener {
         updateImageDisplay();
     }
 
+    /**
+     * Gets the currently displayed (processed) image from the `ImagePanel`.
+     * @return The current `BufferedImage`.
+     */
     @Override
     public BufferedImage getCurrentImage() {
         return imagePanel.getCurrentImage();
     }
 
+    /**
+     * Gets the original, unmodified image.
+     * @return The original `BufferedImage`.
+     */
     @Override
     public BufferedImage getOriginalImage() {
         return originalImage;
     }
 
+    /**
+     * The main entry point of the application.
+     * Creates and shows the `MainFrame` on the Event Dispatch Thread.
+     * @param args Command line arguments (not used).
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             MainFrame frame = new MainFrame();

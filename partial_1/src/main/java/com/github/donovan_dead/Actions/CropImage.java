@@ -10,16 +10,36 @@ import java.util.concurrent.ThreadFactory;
 import com.github.donovan_dead.Utils.Calculator;
 import com.github.donovan_dead.Utils.SortByDegree;
 
+/**
+ * The `CropImage` class implements the `Actionable` interface to provide image cropping functionality.
+ * It supports both rectangular and irregular quadrilateral cropping based on provided points.
+ */
 public class CropImage implements Actionable{
+    /** An array of `Point2D` objects defining the cropping area. */
     private Point2D[] points = new Point2D[4];
+    /** A boolean flag indicating whether the crop operation is a simple rectangle. */
     private boolean isRectangle =false;
 
+    /**
+     * Constructor for rectangular cropping.
+     *
+     * @param p1 The first point defining the rectangle.
+     * @param p2 The second point defining the rectangle.
+     */
     public CropImage(Point2D p1, Point2D p2){
         points[0] = p1;
         points[1] = p2;
         isRectangle = true;
     }
 
+    /**
+     * Constructor for irregular quadrilateral cropping.
+     *
+     * @param p1 The first point of the quadrilateral.
+     * @param p2 The second point of the quadrilateral.
+     * @param p3 The third point of the quadrilateral.
+     * @param p4 The fourth point of the quadrilateral.
+     */
     public CropImage(Point2D p1, Point2D p2, Point2D p3, Point2D p4){
         points[0] = p1;
         points[1] = p2;
@@ -27,6 +47,12 @@ public class CropImage implements Actionable{
         points[3] = p4;
     }
 
+    /**
+     * Corrects the given points to be within the bounds of the image and adjusts for coordinate system differences.
+     *
+     * @param img The `BufferedImage` to use for boundary checking.
+     * @return An array of `Point2D` objects with corrected coordinates.
+     */
     private Point2D[] getCorrectedPoints(BufferedImage img){
         Point2D[] correctedPoints = new Point2D[points.length];
         for(int i = 0; i < points.length; i++) {
@@ -46,6 +72,13 @@ public class CropImage implements Actionable{
         return correctedPoints;
     }
 
+    /**
+     * Applies the cropping action to the input image.
+     * Depending on the constructor used, it performs either a rectangular or an irregular quadrilateral crop.
+     *
+     * @param img The `BufferedImage` to be cropped.
+     * @return A new `BufferedImage` representing the cropped image.
+     */
     @Override
     public BufferedImage ApplyAction( BufferedImage img ){
         Point2D[] correctedPoints = getCorrectedPoints(img);
@@ -60,6 +93,13 @@ public class CropImage implements Actionable{
         }
     }
 
+    /**
+     * Crops a rectangular portion of the image.
+     *
+     * @param img The original `BufferedImage`.
+     * @param pts An array containing two `Point2D` objects defining the rectangle.
+     * @return A new `BufferedImage` representing the rectangularly cropped image.
+     */
     private BufferedImage cropRectangle( BufferedImage img, Point2D[] pts ){
 
         BufferedImage newImg = img.getSubimage(
@@ -72,6 +112,14 @@ public class CropImage implements Actionable{
         return newImg;
     }
 
+    /**
+     * Crops an irregular quadrilateral portion of the image.
+     * This method uses multithreading to process the image pixels efficiently.
+     *
+     * @param img The original `BufferedImage`.
+     * @param pts An array containing four `Point2D` objects defining the irregular quadrilateral.
+     * @return A new `BufferedImage` representing the irregularly cropped image.
+     */
     private BufferedImage cropIrregularRectangule( BufferedImage img, Point2D[] pts ){
         double minX = img.getWidth() + 1;
         double minY = img.getHeight() + 1;

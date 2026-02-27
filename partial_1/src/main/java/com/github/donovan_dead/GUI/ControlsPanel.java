@@ -20,18 +20,32 @@ import com.github.donovan_dead.Actions.CropImage;
 import com.github.donovan_dead.Actions.InvertColorImage;
 import com.github.donovan_dead.Actions.RotateImage;
 
+/**
+ * The `ControlsPanel` class creates the main control panel for the image editor.
+ * It contains UI elements for file operations, undo/redo, and various image
+ * manipulation tools like invert, rotate, and crop, organized within a tabbed pane.
+ */
 public class ControlsPanel extends JPanel {
 
+    /** Listener to handle image editing events. */
     private ImageEditorListener listener;
 
-    // Point Input Panels
+    // Point Input Panels for various actions
+    /** Point input panels for the Invert action. */
     private PointInputPanel p1Invert, p2Invert, p3Invert, p4Invert;
+    /** Point input panels for the Rotate action. */
     private PointInputPanel p1Rotate, p2Rotate, p3Rotate, p4Rotate;
+    /** Point input panels for the Crop action. */
     private PointInputPanel p1Crop, p2Crop, p3Crop, p4Crop;
 
-    // Angle Input for Rotate
+    /** Text field for entering the rotation angle. */
     private JTextField rotateAngleField;
 
+    /**
+     * Constructs a new `ControlsPanel`.
+     *
+     * @param listener The listener that will handle the actions triggered by this panel's controls.
+     */
     public ControlsPanel(ImageEditorListener listener) {
         this.listener = listener;
         setLayout(new BorderLayout()); // Main layout
@@ -56,6 +70,11 @@ public class ControlsPanel extends JPanel {
         add(toolsTabbedPane, BorderLayout.CENTER);
     }
 
+    /**
+     * Creates a panel with "Open" and "Save" buttons.
+     *
+     * @return A `JPanel` containing file operation controls.
+     */
     private JPanel createFileOperationsPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(1, 2, 5, 5));
@@ -72,7 +91,11 @@ public class ControlsPanel extends JPanel {
         return panel;
     }
 
-
+    /**
+     * Creates a panel with "Undo" and "Redo" buttons.
+     *
+     * @return A `JPanel` containing history controls.
+     */
     private JPanel createUndoRedoPanel() {
         JPanel panel = new JPanel();
         panel.setLayout(new GridLayout(1, 2, 5, 5));
@@ -89,6 +112,12 @@ public class ControlsPanel extends JPanel {
         return panel;
     }
 
+    /**
+     * Creates the main panel for the "Invert" tool, including options for
+     * rectangular (2 points) and irregular (4 points) inversion.
+     *
+     * @return A `JPanel` containing controls for the color inversion tool.
+     */
     private JPanel createInvertPanel() {
         JPanel invertPanel = new JPanel();
         invertPanel.setLayout(new BoxLayout(invertPanel, BoxLayout.Y_AXIS));
@@ -145,6 +174,12 @@ public class ControlsPanel extends JPanel {
         return invertPanel;
     }
 
+    /**
+     * Creates the main panel for the "Rotate" tool, including an angle input and options
+     * for rectangular (2 points) and irregular (4 points) rotation.
+     *
+     * @return A `JPanel` containing controls for the image rotation tool.
+     */
     private JPanel createRotatePanel() {
         JPanel rotatePanel = new JPanel();
         rotatePanel.setLayout(new BoxLayout(rotatePanel, BoxLayout.Y_AXIS));
@@ -208,6 +243,12 @@ public class ControlsPanel extends JPanel {
         return rotatePanel;
     }
 
+    /**
+     * Creates the main panel for the "Crop" tool, including options for
+     * rectangular (2 points) and irregular (4 points) cropping.
+     *
+     * @return A `JPanel` containing controls for the image cropping tool.
+     */
     private JPanel createCropPanel() {
         JPanel cropPanel = new JPanel();
         cropPanel.setLayout(new BoxLayout(cropPanel, BoxLayout.Y_AXIS));

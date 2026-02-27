@@ -11,13 +11,28 @@ import com.github.donovan_dead.Utils.Calculator;
 import com.github.donovan_dead.Utils.ImageUtils;
 import com.github.donovan_dead.Utils.SortByDegree;
 
+/**
+ * The `RotateImage` class implements the `Actionable` interface to rotate a portion of an image.
+ * It supports both rectangular and irregular quadrilateral rotation based on provided points and an angle.
+ */
 public class RotateImage implements Actionable {
+    /** The rotation angle in radians. */
     private double angleRad;
+    /** An array of `Point2D` objects defining the region to be rotated. */
     private Point2D[] points = new Point2D[4];
+    /** A boolean flag indicating whether the rotation operation is for a simple rectangle. */
     private boolean isRectangle =false;
 
+    /** The centroid of the rotation area. */
     private Point2D centroid;
 
+    /**
+     * Constructor for rotating a rectangular region of the image.
+     *
+     * @param angelDegree The rotation angle in degrees.
+     * @param p1 The first point defining the rectangle.
+     * @param p2 The second point defining the rectangle.
+     */
     public RotateImage(float angelDegree, Point2D p1, Point2D p2){
         this.angleRad = Math.toRadians(angelDegree);
         this.points[0] = p1;
@@ -25,6 +40,15 @@ public class RotateImage implements Actionable {
         isRectangle = true;
     }
 
+    /**
+     * Constructor for rotating an irregular quadrilateral region of the image.
+     *
+     * @param angelDegree The rotation angle in degrees.
+     * @param p1 The first point of the quadrilateral.
+     * @param p2 The second point of the quadrilateral.
+     * @param p3 The third point of the quadrilateral.
+     * @param p4 The fourth point of the quadrilateral.
+     */
     public RotateImage(double angelDegree, Point2D p1, Point2D p2, Point2D p3, Point2D p4){
         this.angleRad = Math.toRadians(angelDegree);
         this.points[0] = p1;
@@ -33,6 +57,12 @@ public class RotateImage implements Actionable {
         this.points[3] = p4;
     }
     
+    /**
+     * Corrects the given points to be within the bounds of the image and adjusts for coordinate system differences.
+     *
+     * @param img The `BufferedImage` to use for boundary checking.
+     * @return An array of `Point2D` objects with corrected coordinates.
+     */
     private Point2D[] getCorrectedPoints(BufferedImage img){
         Point2D[] correctedPoints = new Point2D[points.length];
         for(int i = 0; i < points.length; i++) {
@@ -53,6 +83,13 @@ public class RotateImage implements Actionable {
     }
 
 
+    /**
+     * Applies the rotation action to the input image.
+     * Depending on the constructor used, it performs either a rectangular or an irregular quadrilateral rotation.
+     *
+     * @param img The `BufferedImage` to be rotated.
+     * @return A new `BufferedImage` representing the image with the specified region rotated.
+     */
     @Override
     public BufferedImage ApplyAction(BufferedImage img){
         Point2D[] correctedPoints = getCorrectedPoints(img);
@@ -67,6 +104,13 @@ public class RotateImage implements Actionable {
         }
     }
 
+    /**
+     * Rotates a rectangular portion of the image around its centroid.
+     *
+     * @param img The original `BufferedImage`.
+     * @param pts An array containing two `Point2D` objects defining the rectangle.
+     * @return A new `BufferedImage` with the rectangular region rotated.
+     */
     private BufferedImage rotateRectangule( BufferedImage img, Point2D[] pts ){
         centroid = new Point2D.Double((pts[0].getX() + pts[1].getX())/2, (pts[0].getY() + pts[1].getY())/2);
         BufferedImage newImg = ImageUtils.deepCopy(img);
@@ -97,6 +141,14 @@ public class RotateImage implements Actionable {
         return newImg;
     }
 
+    /**
+     * Rotates an irregular quadrilateral portion of the image around its centroid.
+     * This method uses multithreading to process the image pixels efficiently.
+     *
+     * @param img The original `BufferedImage`.
+     * @param pts An array containing four `Point2D` objects defining the irregular quadrilateral.
+     * @return A new `BufferedImage` with the irregular quadrilateral region rotated.
+     */
     private BufferedImage rotateIrregularRectangule( BufferedImage img, Point2D[] pts ){
         centroid = SortByDegree.getCentroid();
 
