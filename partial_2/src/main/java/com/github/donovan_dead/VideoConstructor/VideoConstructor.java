@@ -12,6 +12,7 @@ import java.util.List;
 import com.github.donovan_dead.FileInfo.FileType;
 import com.github.donovan_dead.FileInfo.FileTypeDetector;
 import com.github.donovan_dead.VideoConstructor.Components.InfoBlock;
+import com.github.donovan_dead.VideoConstructor.responseFormats.FinalImageResponse;
 import com.github.donovan_dead.VideoConstructor.responseFormats.VideoResponse;
 import com.github.donovan_dead.VideoConstructor.tools.ExiftoolWrapper;
 import com.github.donovan_dead.VideoConstructor.tools.FFMPEGWrapper;
@@ -21,77 +22,118 @@ import com.github.donovan_dead.VideoConstructor.tools.OSMManager;
 public class VideoConstructor {
     private static ArrayList<InfoBlock> video_blocks = new ArrayList<>();
 
+    private static InfoBlock InitialVideo =  null;
+    private static InfoBlock FinalVideo = null;
+    private static File WorkingTempDir = null;
+
     public static void Run(){
-        System.out.println("[DEBUG] Iniciando VideoConstructor.Run()...");
-        obtainFilesFromConsole();
-        
-        System.out.println("[DEBUG] Obteniendo metadatos de los InfoBlocks...");
-        obtainMetadataFromInfoBlocks();
+        WorkingTempDir = new File("temp_production_" + System.currentTimeMillis());
+        if (!WorkingTempDir.exists()) WorkingTempDir.mkdirs();
 
-        System.out.println("[DEBUG] Ordenando por fecha de creación...");
-        sortByCreationDate();
+        try {
+            obtainFilesFromConsole();
+            
+            obtainMetadataFromInfoBlocks();
 
-        System.out.println("[DEBUG] Regularizando archivos...");
-        regularizeFiles();
+            sortByCreationDate();
 
-        System.out.println("[DEBUG] Llamando a las APIs de OpenAI...");
-        callOpenAiApis();
+            regularizeFiles();
 
-        System.out.println("[DEBUG] Generando imagen inicial...");
-        generateInitialImage();
-        System.out.println("\n--- InfoBlocks después de generar Imagen Inicial (Paso 6) ---");
-        for (InfoBlock block : video_blocks) {
-            System.out.println(block);
-        }
+            callOpenAiApis();
 
-        System.out.println("[DEBUG] Generando mapa final...");
-        generateFinalMap();
-        System.out.println("\n--- InfoBlocks después de generar Mapa Final (Paso 7) ---");
-        for (InfoBlock block : video_blocks) {
-            System.out.println(block);
-        }
+            generateInitialImage();
+            
+            generateFinalMap();
 
-        System.out.println("[DEBUG] Generando video final...");
-        generateFinalVideo();
-        System.out.println("[DEBUG] VideoConstructor.Run() finalizado.");
+            generateFinalVideo();
 
-        for(InfoBlock block : video_blocks){
-            System.out.println(block);
-            block.getFile().delete();
+        } catch (Exception e) {
+            System.out.println("Error durante la producción: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            cleanupTempDir();
         }
     }
 
+    private static void cleanupTempDir() {
+        if (WorkingTempDir != null && WorkingTempDir.exists()) {
+            File[] files = WorkingTempDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.isDirectory()) {
+                        deleteDirectory(f);
+                    } else {
+                        f.delete();
+                    }
+                }
+            }
+            WorkingTempDir.delete();
+        }
+    }
+
+    private static void deleteDirectory(File directory) {
+        File[] allContents = directory.listFiles();
+        if (allContents != null) {
+            for (File file : allContents) {
+                deleteDirectory(file);
+            }
+        }
+        directory.delete();
+    }
+
     private static void generateFinalMap(){
-        System.out.println("[DEBUG] Iniciando generateFinalMap()...");
         if (video_blocks.isEmpty()) {
-            System.out.println("[DEBUG] video_blocks está vacío, saliendo de generateFinalMap().");
             return;
         }
 
-        InfoBlock first = video_blocks.get(1);
+        InfoBlock first = video_blocks.get(0);
         InfoBlock last = video_blocks.get(video_blocks.size()-1);
 
         if (first == null || last == null) {
-            System.out.println("[DEBUG] No se encontraron suficientes coordenadas GPS en los bloques.");
             return;
         }
 
-        System.out.println("[DEBUG] Generando mapa con coordenadas:");
-        System.out.println("  - Inicio: " + first.getCoords());
-        System.out.println("  - Fin: " + last.getCoords());
-
         try {
-            // Pasamos tanto el punto inicial como el final para que aparezcan marcadores
-            File mapImage = OSMManager.getInstance().generateMapImage(first.getCoords(), last.getCoords(), 1024, 1536, "final_map.png");
+            File mapImageDest = new File(WorkingTempDir, "final_map.png");
+            File mapImage = OSMManager.getInstance().generateMapImage(first.getCoords(), last.getCoords(), 1024, 1536, mapImageDest.getAbsolutePath());
             if (mapImage != null) {
-                System.out.println("[DEBUG] Mapa generado: " + mapImage.getAbsolutePath());
-                File videoFile = FFMPEGWrapper.ImgToVid(mapImage, FileType.VID_MP4, 1024, 1536, 5);
+                // Generar frase con OpenAI usando FinalImageResponse
+                byte[] fileContent = Files.readAllBytes(mapImage.toPath());
+                String base64Image = java.util.Base64.getEncoder().encodeToString(fileContent);
+
+                StringBuilder allDescs = new StringBuilder("Descripciones del video: ");
+                for (InfoBlock block : video_blocks) {
+                    if (block.getGeneralDesc() != null)
+                        allDescs.append(block.getGeneralDesc()).append(". ");
+                }
+
+                String prompt = "Basado en el mapa de ruta y estas descripciones: " + allDescs.toString() + ". Genera una frase motivacional final que sea corta e impactante.";
+                FinalImageResponse response = OpenAiManager.GenerateStructuredOutput(prompt, List.of(base64Image), FinalImageResponse.class);
+
+                InputStream audioStream = OpenAiManager.GenerateAudioMp3(response.getFinalPhrase());
+
+                File videoFile = FFMPEGWrapper.ImgToVid(mapImage, FileType.VID_MP4, 1024, 1536, 8);
                 if (videoFile != null) {
-                    System.out.println("[DEBUG] Video del mapa generado: " + videoFile.getAbsolutePath());
-                    InfoBlock mapBlock = new InfoBlock(videoFile);
+                    File movedVideoFile = new File(WorkingTempDir, videoFile.getName());
+                    Files.move(videoFile.toPath(), movedVideoFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    
+                    if (response != null && response.getFinalPhrase() != null) {
+                        FFMPEGWrapper.AddTextToVideo(movedVideoFile, response.getFinalPhrase(), "top");
+                    }
+
+                    if (audioStream != null) {
+                        File audioFile = new File(WorkingTempDir, "temp_audio" + ".mp3");
+                        try (java.io.FileOutputStream fos = new java.io.FileOutputStream(audioFile)){
+                            byte[] buffer = audioStream.readAllBytes();
+                            fos.write(buffer);
+                        }
+                        FFMPEGWrapper.mergeVideoAndAudio(movedVideoFile, audioFile);
+                    }
+
+                    InfoBlock mapBlock = new InfoBlock(movedVideoFile);
                     mapBlock.setGeneralDesc("Mapa del recorrido");
                     mapBlock.setDuration(5.0);
-                    video_blocks.add(mapBlock);
+                    VideoConstructor.FinalVideo = mapBlock;
                 }
             }
         } catch (Exception e) {
@@ -100,7 +142,6 @@ public class VideoConstructor {
     }
 
     private static void generateInitialImage(){
-        System.out.println("[DEBUG] Iniciando generateInitialImage()...");
         StringBuilder fullDescription = new StringBuilder("Estas descripciones forman parte de un video general: ");
         for (InfoBlock block : video_blocks) {
             if(block.getGeneralDesc() != null)
@@ -109,16 +150,18 @@ public class VideoConstructor {
         fullDescription.append("Crea una imagen representativa que capture la esencia de todo este contenido.");
 
         try {
-            File imageFile = OpenAiManager.GenerateImage(fullDescription.toString(), 1, "initial_image.jpg");
+            File imageFileDest = new File(WorkingTempDir, "initial_image.jpg");
+            File imageFile = OpenAiManager.GenerateImage(fullDescription.toString(), 1, imageFileDest.getAbsolutePath());
             if (imageFile != null) {
-                System.out.println("[DEBUG] Imagen inicial generada: " + imageFile.getAbsolutePath());
                 File videoFile = FFMPEGWrapper.ImgToVid(imageFile, FileType.VID_MP4, 1024, 1536, 5);
                 if (videoFile != null) {
-                    System.out.println("[DEBUG] Video de imagen inicial generado: " + videoFile.getAbsolutePath());
-                    InfoBlock initialBlock = new InfoBlock(videoFile);
+                    File movedVideoFile = new File(WorkingTempDir, videoFile.getName());
+                    Files.move(videoFile.toPath(), movedVideoFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    
+                    InfoBlock initialBlock = new InfoBlock(movedVideoFile);
                     initialBlock.setGeneralDesc("Imagen inicial representativa");
                     initialBlock.setDuration(5.0);
-                    video_blocks.add(0, initialBlock);
+                    VideoConstructor.InitialVideo = initialBlock;
                 }
             }
         } catch (Exception e) {
@@ -127,36 +170,34 @@ public class VideoConstructor {
     }
 
     private static void generateFinalVideo(){
-        System.out.println("[DEBUG] Iniciando generateFinalVideo()...");
         if (video_blocks.isEmpty()) return;
         try {
             File finalVideo = new File("final_video.mp4");
-            java.nio.file.Files.copy(video_blocks.get(0).getFile().toPath(), finalVideo.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-            System.out.println("[DEBUG] Copiado primer bloque a final_video.mp4: " + video_blocks.get(0).getFile().getName());
+            Files.copy(InitialVideo.getFile().toPath(), finalVideo.toPath(), StandardCopyOption.REPLACE_EXISTING);
             
-            for (int i = 1; i < video_blocks.size(); i++) {
-                System.out.println("[DEBUG] Concatenando bloque " + i + ": " + video_blocks.get(i).getFile().getName());
+            for (int i = 0; i < video_blocks.size(); i++) {
                 FFMPEGWrapper.ConcatenateVideos(finalVideo, video_blocks.get(i).getFile());
             }
+            FFMPEGWrapper.ConcatenateVideos(finalVideo, FinalVideo.getFile());
+
             File regularized = FFMPEGWrapper.RegularizeVideo(finalVideo);
-            Files.copy( regularized.toPath(), finalVideo.toPath(), StandardCopyOption.REPLACE_EXISTING);
-            regularized.delete();
+            if (regularized != null) {
+                Files.copy(regularized.toPath(), finalVideo.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                regularized.delete();
+            }
             System.out.println("Video final generado: final_video.mp4");
         } catch (Exception e) {
             System.out.println("Error al generar el video final: " + e.getMessage());
         }
-
-        
     }
 
     private static void callOpenAiApis(){
-        System.out.println("[DEBUG] Iniciando callOpenAiApis()...");
         OpenAiManager.InitClient();
 
         for (InfoBlock block : video_blocks) {
+            if (block.isAudioIntegrated()) continue;
+
             try {
-                System.out.println("[DEBUG] Procesando bloque para OpenAI: " + block.getFile().getName());
-                // Sample video: max 7 images, 1 every 3 seconds
                 File tempDir = FFMPEGWrapper.SampleVideo(block.getFile(), 7, 3);
                 
                 if (tempDir != null && tempDir.exists() && tempDir.isDirectory()) {
@@ -165,39 +206,31 @@ public class VideoConstructor {
                     
                     if (samples != null) {
                         for (File sample : samples) {
-                            byte[] fileContent = java.nio.file.Files.readAllBytes(sample.toPath());
+                            byte[] fileContent = Files.readAllBytes(sample.toPath());
                             String base64 = java.util.Base64.getEncoder().encodeToString(fileContent);
                             base64Images.add(base64);
-                            sample.delete(); // Delete sample after reading
+                            sample.delete(); 
                         }
                     }
-                    tempDir.delete(); // Delete temp directory
+                    tempDir.delete(); 
 
                     String prompt = "Analiza este video (a través de estos frames) y genera una descripción general y un guion de audio para un video de " + block.getDuration() + " segundos. Utiliza " + Math.ceil(2.3 * block.getDuration()) + " palabras" ;
-                    System.out.println("[DEBUG] Llamando a OpenAI Vision para " + block.getFile().getName());
                     VideoResponse response = 
                         OpenAiManager.GenerateStructuredOutput(prompt, base64Images, VideoResponse.class);
 
                     if (response != null) {
                         block.setGeneralDesc(response.getDescripcionGeneral());
-                        System.out.println("[DEBUG] Descripción generada: " + block.getGeneralDesc());
                         
-                        System.out.println("[DEBUG] Generando audio TTS para el guion...");
                         InputStream audioStream = OpenAiManager.GenerateAudioMp3(response.getAudioScript());
                         if (audioStream != null) {
-                            File audioFile = new File("temp_audio_" + block.getFile().getName() + ".mp3");
+                            File audioFile = new File(WorkingTempDir, "temp_audio_" + block.getFile().getName() + ".mp3");
                             try (java.io.FileOutputStream fos = new java.io.FileOutputStream(audioFile)) {
-                                byte[] buffer = new byte[4096];
-                                int bytesRead;
-                                while ((bytesRead = audioStream.read(buffer)) != -1) {
-                                    fos.write(buffer, 0, bytesRead);
-                                }
+                                byte[] buffer = audioStream.readAllBytes();
+                                fos.write(buffer);
                             }
-                            System.out.println("[DEBUG] Audio guardado en: " + audioFile.getAbsolutePath());
                             
-                            System.out.println("[DEBUG] Mezclando video y audio para " + block.getFile().getName());
                             FFMPEGWrapper.mergeVideoAndAudio(block.getFile(), audioFile);
-                            // audioFile.delete();
+                            block.setAudioIntegrated(true);
                         }
                     }
                 }
@@ -210,19 +243,20 @@ public class VideoConstructor {
     }
 
     private static void regularizeFiles(){
-        System.out.println("[DEBUG] Iniciando regularizeFiles()...");
         if (video_blocks.isEmpty()) return;
 
         for (InfoBlock block : video_blocks) {
+            if (block.isNormalized() && block.getFile().getAbsolutePath().contains(WorkingTempDir.getAbsolutePath())) continue;
+
             File currentFile = block.getFile();
-            System.out.println("[DEBUG] Regularizando: " + currentFile.getName());
-            // Regularizar a MP4 1024x1536
             File regularized = FFMPEGWrapper.AdecuateToFormat(currentFile, FileType.VID_MP4, 1024, 1536);
             
             if (regularized != null) {
                 try {
-                    block.setFile(regularized);
-                    System.out.println("[DEBUG] Archivo regularizado exitosamente: " + regularized.getName());
+                    File moved = new File(WorkingTempDir, regularized.getName());
+                    Files.move(regularized.toPath(), moved.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    block.setFile(moved);
+                    block.setNormalized(true);
                 } catch (Exception e) {
                     System.out.println("Error al actualizar InfoBlock: " + e.getMessage());
                 }
@@ -233,7 +267,6 @@ public class VideoConstructor {
     }
 
     private static void obtainFilesFromConsole(){
-        System.out.println("[DEBUG] Iniciando obtainFilesFromConsole()...");
         Scanner scanner = new Scanner(System.in);
         System.out.println("¿Cuántos archivos desea agregar?");
         int count = 0;
@@ -252,7 +285,6 @@ public class VideoConstructor {
                 try {
                     InfoBlock block = new InfoBlock(new File(path));
                     video_blocks.add(block);
-                    System.out.println("[DEBUG] Bloque añadido: " + path);
                     success = true;
                 } catch (Exception e) {
                     System.out.println("Error: " + e.getMessage());
@@ -267,23 +299,23 @@ public class VideoConstructor {
     }
 
     private static void obtainMetadataFromInfoBlocks(){
-        System.out.println("[DEBUG] Iniciando obtainMetadataFromInfoBlocks()...");
         for (InfoBlock block : video_blocks) {
+            if (block.isNormalized()) continue;
+
             File currentFile = block.getFile();
             FileType type = FileTypeDetector.obtainFileTypeEnum(currentFile);
-            System.out.println("[DEBUG] Procesando metadata para: " + currentFile.getName() + " (Tipo: " + type + ")");
 
             block.setCreationDate(ExiftoolWrapper.getCreationDateFromFile(currentFile));
             block.setCoords(ExiftoolWrapper.getGPSCoordinatesFromFile(currentFile));
 
             if (type.toString().contains("IMG")) {
-                System.out.println("[DEBUG] Convirtiendo imagen a video para metadata...");
                 File converted = FFMPEGWrapper.ImgToVid(currentFile, FileType.VID_MP4, 1024, 1536, 5);
                 if (converted != null) {
                     try {
-                        block.setFile(converted);
-                        currentFile = converted;
-                        System.out.println("[DEBUG] Imagen convertida a video: " + currentFile.getName());
+                        File moved = new File(WorkingTempDir, converted.getName());
+                        Files.move(converted.toPath(), moved.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                        block.setFile(moved);
+                        currentFile = moved;
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -291,12 +323,26 @@ public class VideoConstructor {
             }
 
             block.setDuration(ExiftoolWrapper.getDurationFromFile(currentFile));
-            System.out.println("[DEBUG] Metadata obtenida: Fecha=" + block.getCreationDate() + ", Coords=" + block.getCoords() + ", Duración=" + block.getDuration());
+            block.setNormalized(true);
         }
     }
 
     private static void sortByCreationDate(){
-        System.out.println("[DEBUG] Ordenando InfoBlocks por fecha de creación...");
         Collections.sort(video_blocks);
+    }
+
+    private static void appendInfoBlock(File block) throws Exception{
+        InfoBlock newBlock = new InfoBlock(block);
+        video_blocks.add(newBlock);
+        Collections.sort(video_blocks);
+    }
+
+    private static void removeInfoBlock(File block){
+        for (InfoBlock infoBlock : video_blocks) {
+            if(infoBlock.getFile().equals(block)){
+                video_blocks.remove(infoBlock);
+                break;
+            }        
+        }
     }
 }

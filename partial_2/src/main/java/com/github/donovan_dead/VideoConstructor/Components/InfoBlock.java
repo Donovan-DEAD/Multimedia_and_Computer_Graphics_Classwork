@@ -1,7 +1,6 @@
 package com.github.donovan_dead.VideoConstructor.Components;
 
 import java.io.File;
-import java.io.InputStream;
 import java.time.OffsetDateTime;
 
 import com.github.donovan_dead.FileInfo.FileType;
@@ -9,7 +8,8 @@ import com.github.donovan_dead.FileInfo.FileTypeDetector;
 
 public class InfoBlock implements Comparable<InfoBlock>{
     
-    boolean proccesed = false; 
+    boolean normalized = false;
+    boolean audio_integrated = false;
     File file_to_edit; 
 
     OffsetDateTime creation_date; 
@@ -18,7 +18,6 @@ public class InfoBlock implements Comparable<InfoBlock>{
 
     String general_desc;
     File generated_images;
-    InputStream generatedAudio;
 
     public InfoBlock(File file) throws Exception{
         if(!file.exists() || !file.isFile()) throw new Exception("File does not exist or is not a file, please try with the correct path.");
@@ -77,12 +76,20 @@ public class InfoBlock implements Comparable<InfoBlock>{
         this.generated_images = images;
     }
 
-    public InputStream getSpeechResponse(){
-        return this.generatedAudio;
+    public boolean isNormalized(){
+        return this.normalized;
     }
 
-    public void setSpeechResponse(InputStream response){
-        this.generatedAudio = response;
+    public void setNormalized(boolean normalized){
+        this.normalized = normalized;
+    }
+
+    public boolean isAudioIntegrated(){
+        return this.audio_integrated;
+    }
+
+    public void setAudioIntegrated(boolean audio_integrated){
+        this.audio_integrated = audio_integrated;
     }
 
     @Override
@@ -94,7 +101,7 @@ public class InfoBlock implements Comparable<InfoBlock>{
     public String toString() {
         return "InfoBlock [creation_date=" + creation_date + ", coords=" + coords.toString() + ", duration=" + duration + ", file_to_edit=" + file_to_edit
                 + ", general_desc=" + general_desc + ", generated_images=" + generated_images + ", generatedAudio="
-                + generatedAudio + "]";
+                + "]";
     }
     
 }

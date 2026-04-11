@@ -20,7 +20,6 @@ public class FFMPEGWrapper {
     }
 
     public static File ImgToVid(File file, FileType target_type, int width, int height, int duration_seconds){
-        System.out.println("[DEBUG] FFMPEG: Convirtiendo imagen a video: " + file.getName());
         FileType file_type = FileTypeDetector.obtainFileTypeEnum(file);
         if(file_type == FileType.OTHER) return null;
 
@@ -28,16 +27,19 @@ public class FFMPEGWrapper {
 
         // Añadimos un track de audio silencioso para que la concatenación no falle
         ProcessBuilder pb = new ProcessBuilder(
-            "ffmpeg",
-            "-y", 
-            "-loop", "1",
+            "ffmpeg", "-y", "-loop", "1", 
             "-i", file.getAbsolutePath(),
+            "-f", "lavfi", 
+            "-i", "anullsrc=channel_layout=stereo:sample_rate=44100", // Genera silencio compatible
             "-vf", "scale=" + width + ":" + height + ":force_original_aspect_ratio=increase,crop=" + width + ":" + height + ",setsar=1/1",
             "-c:v", "libx264",
             "-t", String.valueOf(duration_seconds),
-            "-pix_fmt", "yuv420p", // Formato de píxel estándar
-            "-r", "30",            // Framerate constante
-            "-an",                 // <--- IMPORTANTE: Desactiva cualquier rastro de audio
+            "-c:a", "aac", 
+            "-ar", "44100", 
+            "-ac", "2",
+            "-pix_fmt", "yuv420p", 
+            "-r", "30",
+            "-shortest", // Importante para que el audio no dure más que el video
             result_file_name
         );
 
@@ -49,13 +51,11 @@ public class FFMPEGWrapper {
             File result_file = new File(result_file_name);
             
             if(result_file.exists() && result_file.isFile()) {
-                System.out.println("[DEBUG] FFMPEG: Video de imagen creado: " + result_file_name);
                 return result_file;
             } else
                 return null;
 
         } catch (Exception e) {
-            System.out.println("[DEBUG] FFMPEG Error en ImgToVid: " + e.getMessage());
         }
 
         return null;
@@ -99,7 +99,6 @@ public class FFMPEGWrapper {
     }
 
     public static File ChangeVidFormat(File file, FileType target_type, int width, int height){
-        System.out.println("[DEBUG] FFMPEG: Cambiando formato de video: " + file.getName());
         FileType file_type = FileTypeDetector.obtainFileTypeEnum(file);
         
         if(file_type == FileType.OTHER) return null;
@@ -132,13 +131,11 @@ public class FFMPEGWrapper {
 
             File result_file = new File(result_file_name);
             if(result_file.exists() && result_file.isFile()) {
-                System.out.println("[DEBUG] FFMPEG: Video formateado: " + result_file_name);
                 return result_file;
             } else
                 return null;
 
         } catch (Exception e) {
-            System.out.println("[DEBUG] FFMPEG Error en ChangeVidFormat: " + e.getMessage());
         }
         return null;
     }
@@ -176,27 +173,32 @@ public class FFMPEGWrapper {
     }
 
     public static void ConcatenateVideos(File first, File second){
-        System.out.println("[DEBUG] FFMPEG: Concatenando " + first.getName() + " y " + second.getName());
         FileType first_type = FileTypeDetector.obtainFileTypeEnum(first);
         FileType second_type = FileTypeDetector.obtainFileTypeEnum(second);
 
         if(first_type != FileType.VID_MP4 || second_type != FileType.VID_MP4) {
-            System.out.println("[DEBUG] FFMPEG: Fallo en concatenación, tipos no son MP4: " + first_type + ", " + second_type);
             return;
         }
 
         String temp_file_path = first.getAbsolutePath().substring(0, first.getAbsolutePath().lastIndexOf(".")) + "_temp_concat.mp4";
+        String filter = "[0:v]settb=AVTB,setpts=PTS-STARTPTS[v0]; " +
+                    "[0:a]asettb=AVTB,asetpts=PTS-STARTPTS[a0]; " +
+                    "[1:v]settb=AVTB,setpts=PTS-STARTPTS[v1]; " +
+                    "[1:a]asettb=AVTB,asetpts=PTS-STARTPTS[a1]; " +
+                    "[v0][a0][v1][a1]concat=n=2:v=1:a=1[v][a]";
+
         ProcessBuilder pb = new ProcessBuilder(
-            "ffmpeg",
-            "-y",
+            "ffmpeg", "-y",
             "-i", first.getAbsolutePath(),
             "-i", second.getAbsolutePath(),
-            "-filter_complex", "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[v][a]",
+            "-filter_complex", filter,
             "-map", "[v]",
             "-map", "[a]",
             "-c:v", "libx264",
             "-c:a", "aac",
+            "-b:a", "128k",
             "-pix_fmt", "yuv420p",
+            "-r", "30", // Forzamos 30fps constantes para que la unión sea fluida
             temp_file_path
         );
 
@@ -210,11 +212,9 @@ public class FFMPEGWrapper {
                 java.nio.file.Path source = tempFile.toPath();
                 java.nio.file.Path target = first.toPath();
                 java.nio.file.Files.move(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("[DEBUG] FFMPEG: Concatenación exitosa.");
             }
 
         } catch (Exception e) {
-            System.out.println("[DEBUG] FFMPEG Error en concatenación: " + e.getMessage());
         }
     }
 
@@ -248,12 +248,10 @@ public class FFMPEGWrapper {
             }
 
         } catch (Exception e) {
-            System.out.println("[DEBUG] FFMPEG Error en concatenateAudios: " + e.getMessage());
         }
     }
 
     public static void mergeVideoAndAudio(File video, File audio){
-        System.out.println("[DEBUG] FFMPEG: Mezclando video " + video.getName() + " con audio " + audio.getName());
         FileType video_type = FileTypeDetector.obtainFileTypeEnum(video);
         FileType audio_type = FileTypeDetector.obtainFileTypeEnum(audio);
 
@@ -261,17 +259,13 @@ public class FFMPEGWrapper {
 
         double videoDuration = ExiftoolWrapper.getDurationFromFile(video);
         double audioDuration = ExiftoolWrapper.getDurationFromFile(audio);
-        System.out.println("[DEBUG] Duraciones - Video: " + videoDuration + ", Audio: " + audioDuration);
 
         if(audioDuration > videoDuration){
-            System.out.println("[DEBUG] Ajustando duración del audio...");
             AdjustAudioDuration(audio, videoDuration);
         }
 
-        System.out.println("____________________________________________________________");
-
         String temp_file_path = video.getAbsolutePath().substring(0, video.getAbsolutePath().lastIndexOf(".")) + "_merged.mp4";
-        // Re-codificamos el audio a AAC para asegurar compatibilidad total en la mezcla
+
         ProcessBuilder pb = new ProcessBuilder(
             "ffmpeg",
             "-y",
@@ -298,16 +292,13 @@ public class FFMPEGWrapper {
                 java.nio.file.Path source = tempFile.toPath();
                 java.nio.file.Path target = video.toPath();
                 java.nio.file.Files.move(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                System.out.println("[DEBUG] FFMPEG: Mezcla exitosa.");
             }
 
         } catch (Exception e) {
-            System.out.println("[DEBUG] FFMPEG Error en mergeVideoAndAudio: " + e.getMessage());
         }
     }
 
     public static void AdjustAudioDuration(File audio, double targetDuration){
-        System.out.println("[DEBUG] FFMPEG: Ajustando duración de audio a " + targetDuration + "s");
         double currentDuration = ExiftoolWrapper.getDurationFromFile(audio);
         if(currentDuration <= 0 || targetDuration <= 0) return;
 
@@ -337,7 +328,6 @@ public class FFMPEGWrapper {
                 String originalPath = audio.getAbsolutePath();
                 if (audio.delete()) {
                     tempFile.renameTo(new File(originalPath));
-                    System.out.println("[DEBUG] FFMPEG: Ajuste de audio exitoso.");
                 }
             }
         } catch (Exception e) {
@@ -380,5 +370,69 @@ public class FFMPEGWrapper {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private static String wrapText(String text, int limit) {
+        StringBuilder sb = new StringBuilder();
+        int i = 0;
+        while (i < text.length()) {
+            if (i + limit < text.length()) {
+                int lastSpace = text.lastIndexOf(' ', i + limit);
+                if (lastSpace > i) {
+                    sb.append(text, i, lastSpace).append("\n");
+                    i = lastSpace + 1;
+                } else {
+                    sb.append(text, i, i + limit).append("\n");
+                    i += limit;
+                }
+            } else {
+                sb.append(text.substring(i));
+                break;
+            }
+        }
+        return sb.toString();
+    }
+
+    public static void AddTextToVideo(File video, String text, String position) {
+        String wrappedText = wrapText(text, 35);
+        String escapedText = wrappedText.replace("'", "\\'").replace(":", "\\:");
+
+        String x = "(w-text_w)/2";
+        String y = "(h-text_h)/2";
+
+        if (position.equalsIgnoreCase("top")) {
+            y = "h/10";
+        } else if (position.equalsIgnoreCase("bottom")) {
+            y = "h-(h/8)";
+        }
+
+        String temp_file_path = video.getAbsolutePath().substring(0, video.getAbsolutePath().lastIndexOf(".")) + "_text.mp4";
+        
+        String drawtext = String.format("drawtext=text='%s':fontcolor=white:fontsize=48:x=%s:y=%s:borderw=2:bordercolor=black", 
+                                        escapedText, x, y);
+
+        ProcessBuilder pb = new ProcessBuilder(
+            "ffmpeg",
+            "-y",
+            "-i", video.getAbsolutePath(),
+            "-vf", drawtext,
+            "-c:a", "copy",
+            temp_file_path
+        );
+
+        pb.inheritIO();
+        try {
+            Process process = pb.start();
+            process.waitFor();
+
+            File tempFile = new File(temp_file_path);
+            if (tempFile.exists() && tempFile.isFile()) {
+                java.nio.file.Path source = tempFile.toPath();
+                java.nio.file.Path target = video.toPath();
+                java.nio.file.Files.move(source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }
