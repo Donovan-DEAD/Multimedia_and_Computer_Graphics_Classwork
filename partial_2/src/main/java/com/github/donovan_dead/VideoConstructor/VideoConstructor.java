@@ -26,7 +26,7 @@ public class VideoConstructor {
     private static InfoBlock FinalVideo = null;
     private static File WorkingTempDir = null;
 
-    public static void Run(){
+    public static File Run(){
         WorkingTempDir = new File("temp_production_" + System.currentTimeMillis());
         if (!WorkingTempDir.exists()) WorkingTempDir.mkdirs();
 
@@ -45,17 +45,18 @@ public class VideoConstructor {
             
             generateFinalMap();
 
-            generateFinalVideo();
+            return generateFinalVideo();
 
         } catch (Exception e) {
             System.out.println("Error durante la producción: " + e.getMessage());
             e.printStackTrace();
+            return null;
         } finally {
             cleanupTempDir();
         }
     }
 
-    private static void cleanupTempDir() {
+    public static void cleanupTempDir() {
         if (WorkingTempDir != null && WorkingTempDir.exists()) {
             File[] files = WorkingTempDir.listFiles();
             if (files != null) {
@@ -71,7 +72,7 @@ public class VideoConstructor {
         }
     }
 
-    private static void deleteDirectory(File directory) {
+    public static void deleteDirectory(File directory) {
         File[] allContents = directory.listFiles();
         if (allContents != null) {
             for (File file : allContents) {
@@ -81,7 +82,7 @@ public class VideoConstructor {
         directory.delete();
     }
 
-    private static void generateFinalMap(){
+    public static void generateFinalMap(){
         if (video_blocks.isEmpty()) {
             return;
         }
@@ -132,7 +133,7 @@ public class VideoConstructor {
 
                     InfoBlock mapBlock = new InfoBlock(movedVideoFile);
                     mapBlock.setGeneralDesc("Mapa del recorrido");
-                    mapBlock.setDuration(5.0);
+                    mapBlock.setDuration(8.0);
                     VideoConstructor.FinalVideo = mapBlock;
                 }
             }
@@ -141,7 +142,7 @@ public class VideoConstructor {
         }
     }
 
-    private static void generateInitialImage(){
+    public static void generateInitialImage(){
         StringBuilder fullDescription = new StringBuilder("Estas descripciones forman parte de un video general: ");
         for (InfoBlock block : video_blocks) {
             if(block.getGeneralDesc() != null)
@@ -153,7 +154,7 @@ public class VideoConstructor {
             File imageFileDest = new File(WorkingTempDir, "initial_image.jpg");
             File imageFile = OpenAiManager.GenerateImage(fullDescription.toString(), 1, imageFileDest.getAbsolutePath());
             if (imageFile != null) {
-                File videoFile = FFMPEGWrapper.ImgToVid(imageFile, FileType.VID_MP4, 1024, 1536, 5);
+                File videoFile = FFMPEGWrapper.ImgToVid(imageFile, FileType.VID_MP4, 1024, 1536, 4);
                 if (videoFile != null) {
                     File movedVideoFile = new File(WorkingTempDir, videoFile.getName());
                     Files.move(videoFile.toPath(), movedVideoFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -169,8 +170,8 @@ public class VideoConstructor {
         }
     }
 
-    private static void generateFinalVideo(){
-        if (video_blocks.isEmpty()) return;
+    public static File generateFinalVideo(){
+        if (video_blocks.isEmpty()) return null;
         try {
             File finalVideo = new File("final_video.mp4");
             Files.copy(InitialVideo.getFile().toPath(), finalVideo.toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -186,12 +187,14 @@ public class VideoConstructor {
                 regularized.delete();
             }
             System.out.println("Video final generado: final_video.mp4");
+            return finalVideo;
         } catch (Exception e) {
             System.out.println("Error al generar el video final: " + e.getMessage());
+            return null;
         }
     }
 
-    private static void callOpenAiApis(){
+    public static void callOpenAiApis(){
         OpenAiManager.InitClient();
 
         for (InfoBlock block : video_blocks) {
@@ -214,7 +217,7 @@ public class VideoConstructor {
                     }
                     tempDir.delete(); 
 
-                    String prompt = "Analiza este video (a través de estos frames) y genera una descripción general y un guion de audio para un video de " + block.getDuration() + " segundos. Utiliza " + Math.ceil(2.3 * block.getDuration()) + " palabras" ;
+                    String prompt = "Analiza este video (a través de estos frames) y genera una descripción general y un guion de audio EN ESPAÑOL para un video de " + block.getDuration() + " segundos. Utiliza " + Math.ceil(2.3 * block.getDuration()) + " palabras" ;
                     VideoResponse response = 
                         OpenAiManager.GenerateStructuredOutput(prompt, base64Images, VideoResponse.class);
 
@@ -242,7 +245,7 @@ public class VideoConstructor {
         }
     }
 
-    private static void regularizeFiles(){
+    public static void regularizeFiles(){
         if (video_blocks.isEmpty()) return;
 
         for (InfoBlock block : video_blocks) {
@@ -266,7 +269,7 @@ public class VideoConstructor {
         }
     }
 
-    private static void obtainFilesFromConsole(){
+    public static void obtainFilesFromConsole(){
         Scanner scanner = new Scanner(System.in);
         System.out.println("¿Cuántos archivos desea agregar?");
         int count = 0;
@@ -298,7 +301,7 @@ public class VideoConstructor {
         }
     }
 
-    private static void obtainMetadataFromInfoBlocks(){
+    public static void obtainMetadataFromInfoBlocks(){
         for (InfoBlock block : video_blocks) {
             if (block.isNormalized()) continue;
 
@@ -309,7 +312,7 @@ public class VideoConstructor {
             block.setCoords(ExiftoolWrapper.getGPSCoordinatesFromFile(currentFile));
 
             if (type.toString().contains("IMG")) {
-                File converted = FFMPEGWrapper.ImgToVid(currentFile, FileType.VID_MP4, 1024, 1536, 5);
+                File converted = FFMPEGWrapper.ImgToVid(currentFile, FileType.VID_MP4, 1024, 1536, 8);
                 if (converted != null) {
                     try {
                         File moved = new File(WorkingTempDir, converted.getName());
@@ -327,22 +330,45 @@ public class VideoConstructor {
         }
     }
 
-    private static void sortByCreationDate(){
+    public static void sortByCreationDate(){
         Collections.sort(video_blocks);
     }
 
-    private static void appendInfoBlock(File block) throws Exception{
+    public static void appendInfoBlock(File block) throws Exception{
         InfoBlock newBlock = new InfoBlock(block);
         video_blocks.add(newBlock);
-        Collections.sort(video_blocks);
     }
 
-    private static void removeInfoBlock(File block){
+    public static void removeInfoBlock(File block){
         for (InfoBlock infoBlock : video_blocks) {
-            if(infoBlock.getFile().equals(block)){
+            if(infoBlock.getOriginalFile().equals(block)){
                 video_blocks.remove(infoBlock);
                 break;
             }        
         }
+    }
+
+    public static void reset() {
+        cleanupTempDir();
+        video_blocks.clear();
+        InitialVideo = null;
+        FinalVideo = null;
+    }
+
+    public static void initTempDir(){
+        WorkingTempDir = new File("temp_production");
+        if (!WorkingTempDir.exists()) WorkingTempDir.mkdirs();
+    }
+
+    public static ArrayList<InfoBlock> getVideoBlocks(){
+        return video_blocks;
+    }
+
+    public static InfoBlock getInitialVideo(){
+        return InitialVideo;
+    }
+
+    public static InfoBlock getFinalVideo(){
+        return FinalVideo;
     }
 }

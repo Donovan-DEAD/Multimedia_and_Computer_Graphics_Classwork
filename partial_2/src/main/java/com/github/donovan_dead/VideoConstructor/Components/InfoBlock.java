@@ -11,6 +11,7 @@ public class InfoBlock implements Comparable<InfoBlock>{
     boolean normalized = false;
     boolean audio_integrated = false;
     File file_to_edit; 
+    File original_file;
 
     OffsetDateTime creation_date; 
     GPSCoordinates coords = new GPSCoordinates(23.7, -102.6); 
@@ -23,6 +24,11 @@ public class InfoBlock implements Comparable<InfoBlock>{
         if(!file.exists() || !file.isFile()) throw new Exception("File does not exist or is not a file, please try with the correct path.");
         if(FileTypeDetector.obtainFileTypeEnum(file) == FileType.OTHER || FileTypeDetector.obtainFileTypeEnum(file).toString().contains("AUD"))  throw new Exception("This file is not supported.");
         this.file_to_edit = file;
+        this.original_file = file;
+    }
+
+    public File getOriginalFile(){
+        return this.original_file;
     }
 
     public void setFile(File file) throws Exception{
@@ -94,6 +100,7 @@ public class InfoBlock implements Comparable<InfoBlock>{
 
     @Override
     public int compareTo(InfoBlock o) {
+        if (this.creation_date == null || o.creation_date == null) return 0;
         return this.creation_date.compareTo(o.creation_date);
     }
 
