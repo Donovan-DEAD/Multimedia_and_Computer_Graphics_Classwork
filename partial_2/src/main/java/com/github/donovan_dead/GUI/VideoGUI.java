@@ -8,6 +8,10 @@ import java.util.ArrayList;
 import com.github.donovan_dead.VideoConstructor.VideoConstructor;
 import com.github.donovan_dead.VideoConstructor.Components.InfoBlock;
 
+/**
+ * Interfaz gráfica de usuario para el constructor de video.
+ * Permite agregar archivos, visualizar el progreso del procesamiento y ver el video resultante.
+ */
 public class VideoGUI extends JFrame {
     private DefaultListModel<InfoBlock> listModel;
     private JList<InfoBlock> fileList;
@@ -16,6 +20,9 @@ public class VideoGUI extends JFrame {
     private JLabel lblStatus;
     private File finalVideoFile = null;
 
+    /**
+     * Constructor que inicializa los componentes de la interfaz de usuario.
+     */
     public VideoGUI() {
         setTitle("Video Constructor GUI");
         setSize(800, 600);
@@ -23,7 +30,6 @@ public class VideoGUI extends JFrame {
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
 
-        // List model and JList
         listModel = new DefaultListModel<>();
         fileList = new JList<>(listModel);
         fileList.setCellRenderer(new InfoBlockRenderer());
@@ -32,7 +38,6 @@ public class VideoGUI extends JFrame {
         JScrollPane scrollPane = new JScrollPane(fileList);
         add(scrollPane, BorderLayout.CENTER);
 
-        // Top Panel for adding files
         JPanel topPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
         btnAdd = new JButton("Agregar Archivo");
         btnAdd.addActionListener(e -> addFile());
@@ -48,7 +53,6 @@ public class VideoGUI extends JFrame {
 
         add(topPanel, BorderLayout.NORTH);
 
-        // Bottom Panel for progress and run
         JPanel bottomPanel = new JPanel(new BorderLayout());
         progressBar = new JProgressBar(0, 100);
         progressBar.setStringPainted(true);
@@ -70,7 +74,6 @@ public class VideoGUI extends JFrame {
         bottomPanel.add(controls, BorderLayout.CENTER);
         add(bottomPanel, BorderLayout.SOUTH);
 
-        // Timer to update UI status periodically
         Timer timer = new Timer(500, e -> {
             fileList.repaint();
             updateProgress();
@@ -78,6 +81,9 @@ public class VideoGUI extends JFrame {
         timer.start();
     }
 
+    /**
+     * Abre un selector de archivos para agregar imágenes o videos al proyecto.
+     */
     private void addFile() {
         JFileChooser chooser = new JFileChooser();
         FileNameExtensionFilter filter = new FileNameExtensionFilter(
@@ -99,6 +105,9 @@ public class VideoGUI extends JFrame {
         }
     }
 
+    /**
+     * Elimina el archivo seleccionado actualmente en la lista.
+     */
     private void deleteSelectedFile() {
         int index = fileList.getSelectedIndex();
         if (index != -1) {
@@ -110,6 +119,9 @@ public class VideoGUI extends JFrame {
         }
     }
 
+    /**
+     * Refresca la lista visual de archivos basándose en los bloques del VideoConstructor.
+     */
     private void refreshList() {
         listModel.clear();
         ArrayList<InfoBlock> blocks = VideoConstructor.getVideoBlocks();
@@ -119,6 +131,9 @@ public class VideoGUI extends JFrame {
         btnRun.setEnabled(!blocks.isEmpty());
     }
 
+    /**
+     * Calcula y actualiza el porcentaje de progreso en la barra de progreso.
+     */
     private void updateProgress() {
         ArrayList<InfoBlock> blocks = VideoConstructor.getVideoBlocks();
         if (blocks.isEmpty()) {
@@ -141,6 +156,9 @@ public class VideoGUI extends JFrame {
         progressBar.setValue(percentage);
     }
 
+    /**
+     * Inicia el proceso de producción en un hilo separado (SwingWorker).
+     */
     private void runProduction() {
         if (VideoConstructor.getVideoBlocks().isEmpty()) {
             JOptionPane.showMessageDialog(this, "Agregue archivos antes de iniciar.");
@@ -188,7 +206,7 @@ public class VideoGUI extends JFrame {
             @Override
             protected void done() {
                 try {
-                    finalVideoFile = get(); // Obtener el archivo resultante de generateFinalVideo
+                    finalVideoFile = get(); 
                     if (finalVideoFile != null && finalVideoFile.exists()) {
                         lblStatus.setText("Completado: " + finalVideoFile.getName());
                         btnView.setEnabled(true);
@@ -209,6 +227,9 @@ public class VideoGUI extends JFrame {
         worker.execute();
     }
 
+    /**
+     * Limpia todos los archivos agregados y reinicia el estado del proyecto.
+     */
     private void clearAll() {
         VideoConstructor.reset();
         refreshList();
@@ -218,6 +239,9 @@ public class VideoGUI extends JFrame {
         btnView.setEnabled(false);
     }
 
+    /**
+     * Abre el video resultante utilizando el reproductor de video predeterminado del sistema.
+     */
     private void viewResult() {
         if (finalVideoFile != null && finalVideoFile.exists()) {
             try {
@@ -230,6 +254,10 @@ public class VideoGUI extends JFrame {
         }
     }
 
+    /**
+     * Renderizador personalizado para la lista de InfoBlocks.
+     * Cambia el color de fondo según el estado de procesamiento del bloque.
+     */
     private class InfoBlockRenderer extends DefaultListCellRenderer {
         @Override
         public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
@@ -239,11 +267,11 @@ public class VideoGUI extends JFrame {
             JLabel label = (JLabel) super.getListCellRendererComponent(list, text, index, isSelected, cellHasFocus);
             
             if (block.isAudioIntegrated()) {
-                label.setBackground(new Color(144, 238, 144)); // Light Green (Completado)
+                label.setBackground(new Color(144, 238, 144)); 
             } else if (block.isNormalized()) {
-                label.setBackground(new Color(255, 255, 153)); // Light Yellow (A mitad de proceso)
+                label.setBackground(new Color(255, 255, 153)); 
             } else {
-                label.setBackground(Color.WHITE); // Sin procesar
+                label.setBackground(Color.WHITE); 
             }
 
             if (isSelected) {
@@ -255,6 +283,10 @@ public class VideoGUI extends JFrame {
         }
     }
 
+    /**
+     * Punto de entrada principal para lanzar la interfaz gráfica.
+     * @param args Argumentos de línea de comandos.
+     */
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             new VideoGUI().setVisible(true);

@@ -3,16 +3,23 @@ package com.github.donovan_dead.VideoConstructor.responseFormats;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
+/**
+ * Representa la respuesta estructurada de OpenAI para el análisis de un segmento de video.
+ */
 public class VideoResponse {
 
-    @JsonPropertyDescription("Descripción a grandes rasgos de lo que trata el video")
+    @JsonPropertyDescription("Descripción general del contenido visual de los frames analizados.")
     @JsonProperty(required = true)
     private String descripcionGeneral;
 
-    @JsonPropertyDescription("Guion de audio que servirá para generar un audio que será colocado en un video con una duración N")
+    @JsonPropertyDescription("Guion de audio optimizado para la duración del segmento de video.")
     @JsonProperty(required = true)
     private String audioScript;
 
+    /**
+     * Obtiene la descripción general del video.
+     * @return Descripción textual.
+     */
     public String getDescripcionGeneral() {
         return descripcionGeneral;
     }
@@ -21,6 +28,10 @@ public class VideoResponse {
         this.descripcionGeneral = descripcionGeneral;
     }
 
+    /**
+     * Obtiene el guion de audio generado.
+     * @return Guion de audio.
+     */
     public String getAudioScript() {
         return audioScript;
     }

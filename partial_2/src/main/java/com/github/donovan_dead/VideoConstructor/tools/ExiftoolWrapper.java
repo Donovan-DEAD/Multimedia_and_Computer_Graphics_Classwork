@@ -9,13 +9,22 @@ import com.github.donovan_dead.FileInfo.FileType;
 import com.github.donovan_dead.FileInfo.FileTypeDetector;
 import com.github.donovan_dead.VideoConstructor.Components.GPSCoordinates;
 
+/**
+ * Clase de utilidad que envuelve la funcionalidad de Exiftool para extraer metadatos de archivos multimedia.
+ */
 public class ExiftoolWrapper {
-    public static OffsetDateTime getCreationDateFromFile(File file){
-        // System.out.println("[DEBUG] Exiftool: Obteniendo fecha de creación para: " + file.getName());
-        if(!file.exists() && !file.isFile()) return null;
+
+    /**
+     * Extrae la fecha de creación de un archivo multimedia.
+     * 
+     * @param file El archivo a analizar.
+     * @return La fecha de creación como OffsetDateTime, o la fecha actual si no se encuentra.
+     */
+    public static OffsetDateTime getCreationDateFromFile(File file) {
+        if (!file.exists() && !file.isFile()) return null;
 
         FileType file_type = FileTypeDetector.obtainFileTypeEnum(file);
-        if(file_type == FileType.OTHER) return null;
+        if (file_type == FileType.OTHER) return null;
 
         String paramaterName = "";
         
@@ -27,7 +36,6 @@ public class ExiftoolWrapper {
             case FileType.IMG_PNG:
                 paramaterName = "-CreationTime";
                 break;
-            
             case FileType.VID_MOV:
             case FileType.VID_MP4:
                 paramaterName = "-CreateDate";
@@ -60,27 +68,28 @@ public class ExiftoolWrapper {
 
             String output = new String(buffer).trim();
             if (output.isEmpty()) {
-                // System.out.println("[DEBUG] Exiftool: No se encontró fecha, usando actual.");
                 return OffsetDateTime.now();
             }
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssZ");
-            OffsetDateTime dt = OffsetDateTime.parse(output, formatter);
-            // System.out.println("[DEBUG] Exiftool: Fecha obtenida: " + dt);
-            return dt;
+            return OffsetDateTime.parse(output, formatter);
 
         } catch (Exception e) {
-            // System.out.println("[DEBUG] Exiftool Error: " + e.getMessage());
             return OffsetDateTime.now();
         }
     }
 
-    public static GPSCoordinates getGPSCoordinatesFromFile(File file){
-        // System.out.println("[DEBUG] Exiftool: Obteniendo coordenadas GPS para: " + file.getName());
+    /**
+     * Extrae las coordenadas GPS de un archivo multimedia.
+     * 
+     * @param file El archivo a analizar.
+     * @return Objeto GPSCoordinates con la latitud y longitud encontradas, o (0,0) si fallase.
+     */
+    public static GPSCoordinates getGPSCoordinatesFromFile(File file) {
         ProcessBuilder pb = new ProcessBuilder(
             "exiftool",
             "-s3",
-            "-c", "%.6f", // Formato decimal
+            "-c", "%.6f",
             "-GPSLatitude",
             "-GPSLongitude",
             file.getAbsolutePath()
@@ -93,33 +102,33 @@ public class ExiftoolWrapper {
             
             String output = new String(buffer).trim();
             if (output.isEmpty()) {
-                // System.out.println("[DEBUG] Exiftool: No se encontraron coordenadas.");
                 return new GPSCoordinates(0.0, 0.0);
             }
 
-            // ExifTool devuelve los valores en líneas separadas debido a -s3
             String[] lines = output.split("\\R");
             if (lines.length < 2) return new GPSCoordinates(0.0, 0.0);
 
             double lat = Double.parseDouble(lines[0].replaceAll("[^0-9.-]", ""));
             double lon = Double.parseDouble(lines[1].replaceAll("[^0-9.-]", ""));
 
-            GPSCoordinates coords = new GPSCoordinates(lat, lon);
-            // System.out.println("[DEBUG] Exiftool: Coordenadas obtenidas: " + coords);
-            return coords;
+            return new GPSCoordinates(lat, lon);
 
         } catch (Exception e) {
-            // System.out.println("[DEBUG] Exiftool Error (GPS): " + e.getMessage());
             return new GPSCoordinates(0.0, 0.0);
         }
     }
 
-    public static Double getDurationFromFile(File file){
-        // System.out.println("[DEBUG] Exiftool: Obteniendo duración para: " + file.getName());
-        if(!file.exists() && !file.isFile()) return 0.0;
+    /**
+     * Extrae la duración de un archivo de video o audio.
+     * 
+     * @param file El archivo a analizar.
+     * @return La duración en segundos como Double.
+     */
+    public static Double getDurationFromFile(File file) {
+        if (!file.exists() && !file.isFile()) return 0.0;
 
         FileType file_type = FileTypeDetector.obtainFileTypeEnum(file);
-        if(file_type == FileType.OTHER) return 0.0;
+        if (file_type == FileType.OTHER) return 0.0;
 
         ProcessBuilder pb = new ProcessBuilder(
             "exiftool",
@@ -135,19 +144,13 @@ public class ExiftoolWrapper {
             
             String output = new String(buffer).trim();
             if (output.isEmpty()) {
-                // System.out.println("[DEBUG] Exiftool: No se encontró duración.");
                 return 0.0;
             }
 
-            double duration = Double.parseDouble(output.replaceAll("[^0-9.-]", ""));
-            // System.out.println("[DEBUG] Exiftool: Duración obtenida: " + duration + "s");
-            return duration;
+            return Double.parseDouble(output.replaceAll("[^0-9.-]", ""));
 
         } catch (Exception e) {
-            // System.out.println("[DEBUG] Exiftool Error (Duración): " + e.getMessage());
             return 0.0;
         }
     }
-
-
 }

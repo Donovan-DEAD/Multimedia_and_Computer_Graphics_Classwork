@@ -6,98 +6,129 @@ import java.time.OffsetDateTime;
 import com.github.donovan_dead.FileInfo.FileType;
 import com.github.donovan_dead.FileInfo.FileTypeDetector;
 
-public class InfoBlock implements Comparable<InfoBlock>{
+/**
+ * Representa un bloque de información asociado a un archivo multimedia (imagen o video).
+ * Contiene metadatos como fecha de creación, coordenadas GPS, duración y descripción.
+ */
+public class InfoBlock implements Comparable<InfoBlock> {
     
-    boolean normalized = false;
-    boolean audio_integrated = false;
-    File file_to_edit; 
-    File original_file;
+    private boolean normalized = false;
+    private boolean audio_integrated = false;
+    private File file_to_edit; 
+    private File original_file;
 
-    OffsetDateTime creation_date; 
-    GPSCoordinates coords = new GPSCoordinates(23.7, -102.6); 
-    Double duration = 0.0;
+    private OffsetDateTime creation_date; 
+    private GPSCoordinates coords = new GPSCoordinates(23.7, -102.6); 
+    private Double duration = 0.0;
 
-    String general_desc;
-    File generated_images;
+    private String general_desc;
+    private File generated_images;
 
-    public InfoBlock(File file) throws Exception{
-        if(!file.exists() || !file.isFile()) throw new Exception("File does not exist or is not a file, please try with the correct path.");
-        if(FileTypeDetector.obtainFileTypeEnum(file) == FileType.OTHER || FileTypeDetector.obtainFileTypeEnum(file).toString().contains("AUD"))  throw new Exception("This file is not supported.");
+    /**
+     * Crea un nuevo InfoBlock a partir de un archivo.
+     * 
+     * @param file El archivo multimedia (imagen o video).
+     * @throws Exception Si el archivo no existe, no es un archivo válido o no es soportado.
+     */
+    public InfoBlock(File file) throws Exception {
+        if (!file.exists() || !file.isFile()) {
+            throw new Exception("El archivo no existe o no es un archivo válido.");
+        }
+        FileType type = FileTypeDetector.obtainFileTypeEnum(file);
+        if (type == FileType.OTHER || type.toString().contains("AUD")) {
+            throw new Exception("Formato de archivo no soportado.");
+        }
         this.file_to_edit = file;
         this.original_file = file;
     }
 
-    public File getOriginalFile(){
+    public File getOriginalFile() {
         return this.original_file;
     }
 
-    public void setFile(File file) throws Exception{
-        if(!file.exists() || !file.isFile()) throw new Exception("File does not exist or is not a file, please try with the correct path.");
-        if(FileTypeDetector.obtainFileTypeEnum(file) == FileType.OTHER || FileTypeDetector.obtainFileTypeEnum(file).toString().contains("AUD"))  throw new Exception("This file is not supported.");
-        
+    /**
+     * Establece el archivo a editar para este bloque.
+     * 
+     * @param file El nuevo archivo.
+     * @throws Exception Si el archivo no es válido o no es soportado.
+     */
+    public void setFile(File file) throws Exception {
+        if (!file.exists() || !file.isFile()) {
+            throw new Exception("El archivo no existe o no es un archivo válido.");
+        }
+        FileType type = FileTypeDetector.obtainFileTypeEnum(file);
+        if (type == FileType.OTHER || type.toString().contains("AUD")) {
+            throw new Exception("Formato de archivo no soportado.");
+        }
         this.file_to_edit = file;
     }
 
-    public File getFile(){
+    public File getFile() {
         return this.file_to_edit;
     }
 
-    public OffsetDateTime getCreationDate(){
+    public OffsetDateTime getCreationDate() {
         return this.creation_date;
     }
     
-    public void setCreationDate(OffsetDateTime date){
+    public void setCreationDate(OffsetDateTime date) {
         this.creation_date = date;
     }
 
-    public GPSCoordinates getCoords(){
+    public GPSCoordinates getCoords() {
         return this.coords;
     }
 
-    public void setCoords(GPSCoordinates coords){
+    public void setCoords(GPSCoordinates coords) {
         this.coords = coords;
     }
 
-    public Double getDuration(){
+    public Double getDuration() {
         return this.duration;
     }
 
-    public void setDuration(Double duration){
+    public void setDuration(Double duration) {
         this.duration = duration;
     }
 
-    public String getGeneralDesc(){
+    public String getGeneralDesc() {
         return this.general_desc;
     }
 
-    public void setGeneralDesc(String desc){
+    public void setGeneralDesc(String desc) {
         this.general_desc = desc;
     }
 
-    public File getGeneratedImages(){
+    public File getGeneratedImages() {
         return this.generated_images;
     }
 
-    public void setGeneratedImages(File images){
+    public void setGeneratedImages(File images) {
         this.generated_images = images;
     }
 
-    public boolean isNormalized(){
+    public boolean isNormalized() {
         return this.normalized;
     }
 
-    public void setNormalized(boolean normalized){
+    public void setNormalized(boolean normalized) {
         this.normalized = normalized;
     }
 
-    public boolean isAudioIntegrated(){
+    public boolean isAudioIntegrated() {
         return this.audio_integrated;
     }
 
-    public void setAudioIntegrated(boolean audio_integrated){
+    public void setAudioIntegrated(boolean audio_integrated) {
         this.audio_integrated = audio_integrated;
     }
 
+    /**
+     * Compara este bloque con otro basándose en la fecha de creación.
+     * 
+     * @param o El otro bloque a comparar.
+     * @return Un valor negativo, cero o positivo si este bloque es anterior, igual o posterior al otro.
+     */
     @Override
     public int compareTo(InfoBlock o) {
         if (this.creation_date == null || o.creation_date == null) return 0;
@@ -106,9 +137,7 @@ public class InfoBlock implements Comparable<InfoBlock>{
 
     @Override
     public String toString() {
-        return "InfoBlock [creation_date=" + creation_date + ", coords=" + coords.toString() + ", duration=" + duration + ", file_to_edit=" + file_to_edit
-                + ", general_desc=" + general_desc + ", generated_images=" + generated_images + ", generatedAudio="
-                + "]";
+        return "InfoBlock [creation_date=" + creation_date + ", coords=" + coords + ", duration=" + duration 
+                + ", file=" + file_to_edit.getName() + ", description=" + general_desc + "]";
     }
-    
 }
